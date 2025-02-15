@@ -39,7 +39,7 @@ bool digitalReadDebounced(int pin) {
 #define BMP_CS 5
 Adafruit_BMP280 bmp; // setup BMP
 
-void test_bmp(bmp){
+void test_bmp(bmp) {
   Serial.begin(9600);
   while ( !Serial ) delay(100);   // wait for native usb
   Serial.println(F("BMP280 test"));
@@ -63,60 +63,6 @@ const char* ntpServer = "pool.ntp.org";
 unsigned long epochTime;
 long gmtOffset_sec = 32400;
 int daylightOffset_sec = 0;
-
-// class for wifi connection and NTP time access
-class WIFI {
-  public :
-      const char* ssid;
-      const char* password;
-      const char* ntpServer;
-      long gmtOffset_sec;
-      int daylightOffset_sec;
-
-      WIFI(const char* ssid, const char* password) {
-          this->ssid = ssid;
-          this->password = password;
-      };
-
-      void init_wifi_connection() {
-          Serial.begin(115200);
-          delay(1000);
-
-          WiFi.mode(WIFI_STA); //Optional
-          WiFi.begin(ssid, password);
-          Serial.println("\nConnecting");
-
-          while(WiFi.status() != WL_CONNECTED){
-              Serial.print(".");
-              delay(100);
-          }
-
-          Serial.println("\nConnected to the WiFi network");
-          Serial.print("Local ESP32 IP: ");
-          Serial.println(WiFi.localIP());
-      };
-      
-
-      void init_ntp_time(const char* ntpServer, long gmtOffset_sec, int daylightOffset_sec) {
-        this->ntpServer = ntpServer;
-        this->gmtOffset_sec = gmtOffset_sec;
-        this->daylightOffset_sec = daylightOffset_sec;
-      };
-
-      unsigned long get_time() {
-        configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
-        time_t now;
-        struct tm timeinfo;
-        if (!getLocalTime(&timeinfo)) {
-          Serial.println("failed to obtain item");
-          return(0);
-        }
-        time(&now);
-        return now;
-      };
-};
-
-
 class STEPPER_MOTOR {
   private:
     int step_per_rev;
@@ -181,6 +127,60 @@ class STEPPER_MOTOR {
       return mode
     };
 };
+
+// class for wifi connection and NTP time access
+class WIFI {
+  public :
+      const char* ssid;
+      const char* password;
+      const char* ntpServer;
+      long gmtOffset_sec;
+      int daylightOffset_sec;
+
+      WIFI(const char* ssid, const char* password) {
+          this->ssid = ssid;
+          this->password = password;
+      };
+
+      void init_wifi_connection() {
+          Serial.begin(115200);
+          delay(1000);
+
+          WiFi.mode(WIFI_STA); //Optional
+          WiFi.begin(ssid, password);
+          Serial.println("\nConnecting");
+
+          while(WiFi.status() != WL_CONNECTED){
+              Serial.print(".");
+              delay(100);
+          }
+
+          Serial.println("\nConnected to the WiFi network");
+          Serial.print("Local ESP32 IP: ");
+          Serial.println(WiFi.localIP());
+      };
+      
+
+      void init_ntp_time(const char* ntpServer, long gmtOffset_sec, int daylightOffset_sec) {
+        this->ntpServer = ntpServer;
+        this->gmtOffset_sec = gmtOffset_sec;
+        this->daylightOffset_sec = daylightOffset_sec;
+      };
+
+      unsigned long get_time() {
+        configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+        time_t now;
+        struct tm timeinfo;
+        if (!getLocalTime(&timeinfo)) {
+          Serial.println("failed to obtain item");
+          return(0);
+        }
+        time(&now);
+        return now;
+      };
+};
+
+
 
 
 void setup() {
