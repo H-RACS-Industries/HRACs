@@ -117,7 +117,7 @@ void test_bmp(bmp){
 #define up_pin 16
 #define down_pin 17
 
-class STEPPER_MOTOR{
+class STEPPER_MOTOR {
   private:
     int step_per_rev;
     float gear_ratio;
@@ -183,7 +183,7 @@ class STEPPER_MOTOR{
 };
 
 
-void setup(){
+void setup() {
   // setup wifi and time
   WIFI my_wifi(ssid = ssid, password = password);
   my_wifi.init_wifi_connection();
