@@ -148,7 +148,7 @@ class STEPPER_MOTOR{
       };
 
       digitalWrite(enable_pin, HIGH);
-      current_degree += deg
+      current_degree += deg;
     };
 
     void set_degree(int deg) {
@@ -178,9 +178,7 @@ class STEPPER_MOTOR{
         mode = false;
       };
 
-      if (mode == false) {
-        return mode;
-      };
+      return mode
     };
 };
 
@@ -194,7 +192,7 @@ void setup(){
   Serial.print(epochTime);
 
   // test BMP280 connection
-  test_bmp(bmp)
+  test_bmp(bmp);
 
   // setup stepper motor controls
   STEPPER_MOTOR stepper_motor(int step_per_rev, float gear_ratio);
