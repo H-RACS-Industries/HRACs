@@ -2,6 +2,13 @@
 #include <WiFi.h>
 #include "time.h"
 #include <cmath> 
+//Stepper Motor Setup
+#define direction_pin 33 
+#define step_pin 32
+#define enable_pin 34
+#define calibrating_button 18
+#define up_pin 16
+#define down_pin 17
 
 // Debounced version of digitalRead()
 bool digitalReadDebounced(int pin) {
@@ -109,13 +116,6 @@ void test_bmp(bmp){
     while (1) delay(10);
 };
 
-//Stepper Motor Setup
-#define direction_pin 33 
-#define step_pin 32
-#define enable_pin 34
-#define calibrating_button 18
-#define up_pin 16
-#define down_pin 17
 
 class STEPPER_MOTOR {
   private:
