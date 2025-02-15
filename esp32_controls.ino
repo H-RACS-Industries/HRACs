@@ -2,6 +2,9 @@
 #include <WiFi.h>
 #include "time.h"
 #include <cmath> 
+#include <Wire.h>
+#include <SPI.h>
+#include <Adafruit_BMP280.h>
 
 // Debounced version of digitalRead()
 bool digitalReadDebounced(int pin) {
@@ -43,8 +46,8 @@ class WIFI {
       int daylightOffset_sec;
 
       WIFI(const char* ssid, const char* password) {
-          this->ssid = ssid;
-          this->password = password;
+        this->ssid = ssid;
+        this->password = password;
       };
 
       void init_wifi_connection() {
@@ -89,9 +92,10 @@ class WIFI {
 #define BMP_MISO 19
 #define BMP_MOSI 23
 #define BMP_CS 5
-Adafruit_BMP280 bmp; // setup BMP
 
-void test_bmp(bmp){
+
+void test_bmp(){
+  Adafruit_BMP280 bmp; // setup BMP
   Serial.begin(9600);
   while ( !Serial ) delay(100);   // wait for native usb
   Serial.println(F("BMP280 test"));
@@ -107,6 +111,7 @@ void test_bmp(bmp){
     Serial.print("        ID of 0x60 represents a BME 280.\n");
     Serial.print("        ID of 0x61 represents a BME 680.\n");
     while (1) delay(10);
+  };
 };
 
 //Stepper Motor Setup
@@ -116,6 +121,8 @@ void test_bmp(bmp){
 #define calibrating_button 18
 #define up_pin 16
 #define down_pin 17
+int step_per_rev = 200;
+int gear_ratio = 5.536;
 
 class STEPPER_MOTOR {
   private:
@@ -127,9 +134,10 @@ class STEPPER_MOTOR {
     bool calibrated = false;
 
   public:
-    STEPPER_MOTOR(int step_per_rev, float gear_ratio)
-    : step_per_rev(step_per_rev), gear_ratio(gear_ratio) {
-      step_per_deg = step_per_rev * gear_ratio;
+    STEPPER_MOTOR(int step_per_rev, float gear_ratio){
+      this-> step_per_rev = step_per_rev;
+      this-> gear_ratio = gear_ratio;
+      step_per_deg = step_per_rev * gear_ratio / 360;
     };
 
     void move(float deg) {
@@ -178,27 +186,27 @@ class STEPPER_MOTOR {
         mode = false;
       };
 
-      return mode
+      return mode;
     };
 };
 
+WIFI my_wifi(ssid = ssid, password = password);
+STEPPER_MOTOR stepper_motor(step_per_rev = step_per_rev, gear_ratio = gear_ratio);
 
 void setup() {
   // setup wifi and time
-  WIFI my_wifi(ssid = ssid, password = password);
+
   my_wifi.init_wifi_connection();
   my_wifi.init_ntp_time(ntpServer = ntpServer, gmtOffset_sec = gmtOffset_sec, daylightOffset_sec = daylightOffset_sec);
   epochTime = my_wifi.get_time();
   Serial.print(epochTime);
 
   // test BMP280 connection
-  test_bmp(bmp);
+  test_bmp();
 
   // setup stepper motor controls
-  STEPPER_MOTOR stepper_motor(int step_per_rev, float gear_ratio);
   stepper_motor.calibrate_stepper_motor();
 };
-
 void loop(){
   stepper_motor.manual_control_check();
 };
