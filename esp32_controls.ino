@@ -152,7 +152,7 @@ class STEPPER_MOTOR {
     };
 
     void set_degree(int deg) {
-      move(deg - current_degree)
+      move(deg - current_degree);
     }
 
     void calibrate_stepper_motor() {
@@ -165,8 +165,8 @@ class STEPPER_MOTOR {
       };
     };
 
-    void manual_control_check() {
-      bool mode = false;
+    bool manual_control_check() {
+      bool mode;
 
       if (digitalRead(up_pin) == HIGH) {
         move(10);
