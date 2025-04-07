@@ -6,7 +6,7 @@ app = Flask(__name__)
 @app.route('/')
 def home():
     db = DatabaseManager("database.db")
-    room_info = db.execute("select name, current_temp, ideal_temp, wake_up_time, shut_down_time from room_info")
+    room_info = db.execute("select name, current_temp, ideal_temp, wake_up_time, shut_down_time from room_info", values=())
     print(room_info)
     return render_template("home.html", room_info=room_info)
 
