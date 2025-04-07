@@ -1,9 +1,10 @@
 from flask import Flask, request, jsonify, abort
 from database import DatabaseManager
 from flask import render_template
+from flask import redirect
 import datetime
 app = Flask(__name__)
-@app.route('/')
+@app.route('/home')
 def home():
     db = DatabaseManager("database.db")
     room_info = db.execute("select name, current_temp, ideal_temp, wake_up_time, shut_down_time from room_info", values=())
@@ -26,11 +27,19 @@ def loginsubmit():
         if h_password != password:
             #add function later
             pass
-
-
     else:
         abort(400, description="Missing username or password")
-    return jsonify(form_data)
+
+@app.route('/signup/submit', methods=['post'])
+def signupsubmit():
+    name = request.form.get('name')
+    email = request.form.get('email')
+    password = request.form.get('password') #encrypt this later
+    role = request.form.get('role')
+    print(name, email, password, role)
+    db = DatabaseManager("database.db")
+
+    return redirect("/login")
 @app.route('/signup')
 def signup():
     return render_template("signup.html")
