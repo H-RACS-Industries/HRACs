@@ -1,131 +1,93 @@
-<!DOCTYPE html>
-<html lang="en" data-theme="dark">
-<head>
-  <meta charset="UTF-8">
-  <title>UWC ISAK H-RACS</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+from flask import Flask, request, jsonify, abort
+from database import DatabaseManager
+from flask import render_template
+import datetime
+app = Flask(__name__)
+@app.route('/')
+def home():
+    db = DatabaseManager("database.db")
+    room_info = db.execute("select name, current_temp, ideal_temp, wake_up_time, shut_down_time from room_info", values=())
+    print(room_info)
+    return render_template("home.html", room_info=room_info)
 
-  <!-- Cirrus & Fonts -->
-  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.1/css/all.css">
-  <link href="https://fonts.googleapis.com/css?family=Nunito+Sans:200,300,400,600,700" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css?family=Montserrat:400,700" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cirrus-ui/dist/cirrus.min.css">
+@app.route('/login')
+def login():
+    return render_template("login.html")
 
-  <!-- Custom Dark Mode CSS -->
-<style>
-  /* Default (light mode) colors are provided by Cirrus */
-  /* Dark mode overrides */
-  html[data-theme="dark"] body {
-    background-color: #121212;
-    color: #e0e0e0;
-  }
-  html[data-theme="dark"] .card {
-    background-color: #1e1e1e;
-    color: #e0e0e0;
-  }
-  html[data-theme="dark"] .card__header p,
-  html[data-theme="dark"] .card__body p {
-    color: #e0e0e0;
-  }
-  html[data-theme="dark"] h1 {
-    color: #e0e0e0;
-  }
-  html[data-theme="dark"] .btn--dark {
-    background-color: #333;
-    color: #fff;
-  }
+@app.route('/login/submit', methods=['POST'])
+def loginsubmit():
+    form_data = request.form.to_dict()  # This will get all form fields as a dictionary
+    if 'username' in form_data and 'password' in form_data:
+        username = form_data['username']
+        password = form_data['password']
 
-  /* Style inputs for dark mode */
-  html[data-theme="dark"] .card input[type="text"] {
-    background-color: #2c2c2c;
-    color: #e0e0e0;
-    border: none;
-    border-bottom: 1px solid #555; /* Lighter border color for dark mode */
-  }
+        db = DatabaseManager("database.db")
+        h_password = db.execute('select password from users where username=?', (username,))
+        if h_password != password:
+            #add function later
+            pass
 
-  html[data-theme="dark"] .card input[type="text"]:focus {
-    outline: none;
-    border-bottom: 1px solid #fff; /* Highlight border on focus */
-  }
 
-  /* Position the button at the bottom-right corner */
-  .dark-mode-toggle {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background-color: #333;
-    color: white;
-    border: none;
-    border-radius: 50%;  /* This makes the button circular */
-    padding: 15px;  /* Increased padding to make it more circular */
-    font-size: 24px;
-    cursor: pointer;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
+    else:
+        abort(400, description="Missing username or password")
+    return jsonify(form_data)
+@app.route('/signup')
+def signup():
+    return render_template("signup.html")
 
-  /* Optional: You can tweak the moon icon size to ensure it's centered inside the circle */
-  .dark-mode-toggle i {
-    margin: 0;
-  }
-</style>
-</head>
-<body class="content">
+from datetime import timedelta
+from datetime import datetime
+# Define the custom filter
+def seconds_to_time(value):
+    # Ensure the value is an integer
+    value = int(value)
 
-  <!-- Header with Dark Mode Toggle -->
-  <h1 class="u-text-left u-text-bold u-text-2xl">UWC ISAK H-RACS</h1>
-  <h4 class="u-text-left u-text-bold u-text-2xl">Welcome Nhan</h4>
-  <div class="u-mb-0">
-    <button class="btn-success" id="saveButton">Save changes</button>
-  </div>
+    # Convert seconds to timedelta, then to a datetime object
+    time = str(timedelta(seconds=value))
+    hours, minutes, seconds = map(int, time.split(":"))
 
-<div class="u-flex u-flex-wrap u-justify-start px-4 py-3">
-  {% for room in room_info %}
-    <!-- Room Card -->
-    <div class="card u-round-lg u-shadow-lg my-4 mx-3 px-4 py-3" style="max-width: 250px;">
-      <header class="card__header">
-        <p class="u-text-bold u-text-xl">{{ room[0] }}</p>
-      </header>
-      <div class="card__body">
-        <!-- Current Temp (non-editable, with input aesthetics) -->
-        <div class="u-text-md">
-          Current Temp:
-          <input type="text" value="{{ room[1] }}" class="u-text-md u-border-0 u-bg-transparent" style="border-bottom: 1px solid #ccc;" readonly>
-        </div>
-        <!-- Ideal Temp (editable) -->
-        <div class="u-text-md">
-          Ideal Temp:
-          <input type="text" value="{{ room[2] }}" class="u-text-md u-border-0 u-bg-transparent" style="border-bottom: 1px solid #ccc;">
-        </div>
-        <!-- Wake (editable) -->
-        <div class="u-text-md">
-          Wake:
-          <input type="text" value="{{ room[3] | seconds_to_time}}" class="u-text-md u-border-0 u-bg-transparent" style="border-bottom: 1px solid #ccc;">
-        </div>
-        <!-- Sleep (editable) -->
-        <div class="u-text-md">
-          Sleep:
-          <input type="text" value="{{ room[4] | seconds_to_time }}" class="u-text-md u-border-0 u-bg-transparent" style="border-bottom: 1px solid #ccc;">
-        </div>
-      </div>
-    </div>
-  {% endfor %}
-</div>
-  <!-- Dark Mode Toggle Button (Bottom-right) -->
-  <button class="dark-mode-toggle" onclick="toggleDarkMode()">
-    <i class="fas fa-moon"></i>
-  </button>
+    # Convert timedelta to a datetime object and format it
+    time_obj = datetime(1, 1, 1, hours, minutes, seconds)
 
-  <!-- Dark Mode Toggle Script -->
-  <script>
-    function toggleDarkMode() {
-      const html = document.documentElement;
-      const currentTheme = html.getAttribute("data-theme");
-      html.setAttribute("data-theme", currentTheme === "dark" ? "light" : "dark");
-    }
-  </script>
+    # Return time in 12-hour format with AM/PM
+    return time_obj.strftime("%I:%M %p")
 
-</body>
-</html>
+@app.route('/get_ideal_temp/<int:room_num>', methods=['GET'])
+def get_temp(room_num):
+
+    db = DatabaseManager("database.db")
+    query = f'select ideal_temp from room_info where id = {int(room_num)}'
+    message = db.execute(query)[0][0]
+
+    return str(message)
+app.jinja_env.filters['seconds_to_time'] = seconds_to_time
+@app.route('/get_wake/<int:room_num>', methods=['GET'])
+def get_wake(room_num):
+
+    db = DatabaseManager("database.db")
+    query = f'select wake_up_time from room_info where id = {int(room_num)}'
+    message = db.execute(query)[0][0]
+    print(message)
+    return str(message)
+@app.route('/get_sleep/<int:room_num>', methods=['GET'])
+def get_sleep(room_num):
+
+    db = DatabaseManager("database.db")
+    query = f'select shut_down_time from room_info where id = {int(room_num)}'
+    message = db.execute(query)[0][0]
+    print(message)
+    return str(message)
+
+@app.route('/post_temp/<int:room_num>', methods=['POST'])
+def post_temp(room_num):
+    db = DatabaseManager("database.db")
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+    current_temp = data.get('current_temp')
+    query = f'update room_info set current_temp = {current_temp} where id = {room_num}'
+    db.run_save(query)
+    return jsonify({"message": f'Current temperature updated as {current_temp}'})
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=8000, debug=True)
