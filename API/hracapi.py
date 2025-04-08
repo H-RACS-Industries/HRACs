@@ -2,7 +2,10 @@ from flask import Flask, request, jsonify, abort
 from database import DatabaseManager
 from flask import render_template
 from flask import redirect
+from flask import flash
 import datetime
+from securepasscode import check_hash
+from securepasscode import encrypt_password
 app = Flask(__name__)
 @app.route('/home')
 def home():
@@ -18,27 +21,45 @@ def login():
 @app.route('/login/submit', methods=['POST'])
 def loginsubmit():
     form_data = request.form.to_dict()  # This will get all form fields as a dictionary
-    if 'username' in form_data and 'password' in form_data:
-        username = form_data['username']
-        password = form_data['password']
-
+    if 'name' in form_data and 'password' in form_data:
         db = DatabaseManager("database.db")
-        h_password = db.execute('select password from users where username=?', (username,))
-        if h_password != password:
-            #add function later
-            pass
+        name = form_data['name']
+        if db.execute(f'select name from users where name="{name}"', values = ()):
+            password = form_data['password']
+            h_password = db.execute('select password from users where name=?', (name,))[0][0]
+            if check_hash(user_password=password,hashed_password= h_password):
+                return redirect("/home")
+            else:
+                error = "Please check your information"
+                return render_template("login.html", error=error)
+        else:
+            error = "Please check your information"
+            return render_template("login.html", error=error)
+
     else:
         abort(400, description="Missing username or password")
-
+    db.close()
 @app.route('/signup/submit', methods=['post'])
 def signupsubmit():
-    name = request.form.get('name')
-    email = request.form.get('email')
-    password = request.form.get('password') #encrypt this later
-    role = request.form.get('role')
-    print(name, email, password, role)
     db = DatabaseManager("database.db")
 
+    name = request.form.get('name')
+    name_list = [a[0] for a in db.execute('select name from users', values = ())]
+    print(name_list)
+    if name in name_list:
+        return 'user already exists'
+
+    email = request.form.get('email')
+    password = request.form.get('password')
+    password = encrypt_password(password)
+
+    role = request.form.get('role')
+    if role not in ['student', 'teacher', 'staff']:
+        return abort(400, description="Dont try to be smart ^-^")
+    print(name, email, password, role)
+
+    query = 'insert into users(name, email, password, role) values (?,?,?,?)'
+    db.run_save(query, (name, email, password, role))
     return redirect("/login")
 @app.route('/signup')
 def signup():
@@ -69,6 +90,7 @@ def get_temp(room_num):
     message = db.execute(query)[0][0]
 
     return str(message)
+
 app.jinja_env.filters['seconds_to_time'] = seconds_to_time
 @app.route('/get_wake/<int:room_num>', methods=['GET'])
 def get_wake(room_num):
