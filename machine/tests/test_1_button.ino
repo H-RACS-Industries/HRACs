@@ -1,4 +1,4 @@
-#define checkButtonPin 25;  // the number of the pushbutton pin
+#define checkButtonPin 25  // the number of the pushbutton pin
 
 void setup() {
     Serial.begin(9600);
@@ -10,7 +10,7 @@ void button_setup() {
 }
 
 void loop() {
-    if (digitalRead(checkButtonPin) == LOW) { // since it is pulling up
-        Serial.println("check button is pressed");
-    }
+  if (digitalRead(checkButtonPin) == LOW) { // since it is pulling up
+      Serial.println("check button is pressed");
+  }
 }
