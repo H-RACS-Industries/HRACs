@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Submit Temperature</title>
+  <style>
+    #message {
+      margin-top: 10px;
+      font-weight: bold;
+      color: green;
+    }
+  </style>
+</head>
+<body>
+  <h1>Submit Temperature for Room</h1>
+
+  <form id="temp-form">
+    <label for="room">Room Number:</label>
+    <input type="number" id="room" name="room" required>
+
+    <label for="current_temp">Temperature:</label>
+    <input type="text" id="current_temp" name="current_temp" required>
+
+    <button type="submit">Submit</button>
+  </form>
+
+  <div id="message"></div>
+
+  <script>
+    document.getElementById('temp-form').addEventListener('submit', async function (e) {
+      e.preventDefault();
+
+      const room = document.getElementById('room').value;
+      const current_temp = document.getElementById('current_temp').value;
+      const messageBox = document.getElementById('message');
+
+      try {
+        const response = await fetch(`/post_temp/${room}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ current_temp })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          messageBox.textContent = result.message;
+          messageBox.style.color = 'green';
+          // Clear inputs
+          document.getElementById('room').value = '';
+          document.getElementById('current_temp').value = '';
+        } else {
+          messageBox.textContent = result.error || 'Submission failed.';
+          messageBox.style.color = 'red';
+        }
+      } catch (err) {
+        messageBox.textContent = 'Error connecting to server.';
+        messageBox.style.color = 'red';
+        console.error(err);
+      }
+    });
+  </script>
+</body>
+</html>
