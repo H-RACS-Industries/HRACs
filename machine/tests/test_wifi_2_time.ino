@@ -1,34 +1,34 @@
 #include <WiFi.h>
 
+void wifi_setup(const char* ssid, const char* password) {
+  WiFi.mode(WIFI_STA);              // ensure station mode
+  WiFi.begin(ssid, password);
+  Serial.println("\nConnecting");
+
+  while (WiFi.status() != WL_CONNECTED) {
+    Serial.print(".");
+    delay(500);
+  }
+
+  Serial.println("\nConnected to WiFi");
+  Serial.print("IP is: ");
+  Serial.println(WiFi.localIP());
+}
+
 void setup() {
-    wifi_setup(); // insert the rigth things
-    get_ntp_time();
+    Serial.begin(115200);             // match Serial Monitor baud
+    delay(200);                       // give time for Serial to come up
+    Serial.println("starting");
+    wifi_setup("ISAK-S", "heK7bTGW"); // insert the rigth things
+    get_ntp_time( "pool.ntp.org", 32400, 0);
 }
 
-void wifi_setup(
-    char* ssid, 
-    char* password
-    ) {
-    
-    WiFi.begin(ssid, password);
-    Serial.println("\nConnecting");
-
-    while (WiFi.status() != WL_CONNECTED) {
-        Serial.print(".");
-        delay(100);
-    }
-
-    Serial.println("\nConnected to WiFi");
-    Serial.print("\nIP is:");
-    Serial.println(WiFi.localIP());
-}
-
-void get_ntp_time(
+int get_ntp_time(
     const char* ntpServer,
     long gmtOffset_sec,
     int daylightOffset_sec
 ) {
-    configTime(gmtOffset_sec, dayligthOffset_sec, ntpServer);
+    configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
     time_t now;
     struct tm timeinfo;
     if (!getLocalTime(&timeinfo)) {
@@ -37,4 +37,9 @@ void get_ntp_time(
     }
     time(&now);
     return now;
+}
+
+void loop() {
+  Serial.println(get_ntp_time( "pool.ntp.org", 32400, 0));
+  delay(100);
 }
