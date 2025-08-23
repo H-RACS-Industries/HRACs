@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>H-RACS UWC ISAK Japan</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Meta & Fonts -->
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.1/css/all.css"
+          integrity="sha384-hWVjflwFxL6sNzntih27bfxkr27PmbbK/iSvJ+a4+0owXq79v+lsFkW54bOGbiDQ"
+          crossorigin="anonymous">
+    <link href="https://fonts.googleapis.com/css?family=Nunito+Sans:200,300,400,600,700" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Montserrat:400,700" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cirrus-ui/dist/cirrus.min.css">
+
+    <style>
+        /* Core desktop styles */
+        body {
+            background: url("../static/asama.png") no-repeat center center fixed;
+            background-size: cover;
+            font-family: 'Nunito Sans', sans-serif;
+        }
+
+        .hero.fullscreen {
+            min-height: 100vh;
+        }
+
+        .signup-container {
+            max-width: 900px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .frame {
+            background-color: #fff;
+        }
+
+        .padded {
+            padding: 0 2rem;
+        }
+
+        .level.fill-height {
+            align-items: stretch;
+            display: flex;
+        }
+
+        .col-6:first-child {
+            padding-left: 0;
+        }
+
+        .col-6:last-child {
+            padding-right: 0;
+        }
+
+        ul {
+            display: flex;
+            list-style: none;
+        }
+
+        li {
+            align-items: center;
+            display: flex;
+            padding: 0 0.5rem;
+        }
+
+        .btn-info {
+            margin-left: 1rem;
+        }
+
+        .bg {
+            background-image: url("../static/shesdifferentfromothersthatihavemet.png");
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center center;
+            padding-bottom: 100%; /* Default for larger screens */
+        }
+
+        /* MOBILE-SPECIFIC STYLES */
+        @media (max-width: 768px) {
+            .bg {
+                padding-bottom: 40%; /* Adjust height to half for mobile */
+            }
+
+            /* This rule continues to apply for styling, but the "col-6" class will be removed by JavaScript */
+            .row.fill-height {
+                flex-direction: column;
+            }
+        }
+    </style>
+
+    <script>
+        // On mobile devices (width <= 768px), remove the "col-6" class from all elements.
+        function removeCol6ClassOnMobile() {
+            if (window.innerWidth <= 768) {
+                document.querySelectorAll('.col-6').forEach(function(element) {
+                    element.classList.remove('col-6');
+                });
+            }
+        }
+        document.addEventListener("DOMContentLoaded", removeCol6ClassOnMobile);
+    </script>
+</head>
+
+<body>
+    <div class="hero fullscreen">
+        <div class="hero-body">
+            <div class="content">
+                <!-- Wrapped form in signup-container -->
+                <div class="signup-container">
+                    <form class="frame p-0" action="/login/submit" method="post">
+                        <div class="frame__body p-0">
+                            <div class="row p-0 level fill-height">
+                                <div class="col-6 bg"></div>
+                                <div class="col-6">
+                                    <div class="space xlarge"></div>
+                                    <div class="padded">
+                                        <h3>Log in</h3>
+                                        <div class="form-section">
+                                            <div class="input-control">
+                                                <input
+                                                    class="input-contains-icon"
+                                                    id="name"
+                                                    name="name"
+                                                    placeholder="Name"
+                                                    type="text"
+                                                    value=""
+                                                />
+                                            </div>
+                                        </div>
+                                        <div class="form-section">
+                                            <div class="input-control">
+                                                <input
+                                                    class="input-contains-icon"
+                                                    id="password"
+                                                    name="password"
+                                                    placeholder="Password"
+                                                    type="password"
+                                                    value=""
+                                                />
+                                            </div>
+                                        </div>
+                                        <div class="form-section u-flex u-justify-between u-items-center">
+                                            <div>
+                                                <label class="checkbox">
+                                                    <input type="checkbox" name="remember" id="remember" />
+                                                    <span class="check"></span>
+                                                    Remember me
+                                                </label>
+                                            </div>
+                                            <div class="u-flex-grow-1 u-text-right">
+                                                <a href="/signup" class="u-text-small u-text-primary" style="text-decoration: underline;">
+                                                    Create new account
+                                                </a>
+                                            </div>
+                                        </div>
+                                        {% if error %}
+                                            <div class="error" style="color:red">{{ error }}</div>
+                                        {% endif %}
+                                        <button class="btn-info u-pull-right" type="submit">
+                                            Log in
+                                        </button>
+                                        <span class="fg-danger info"></span>
+                                    </div>
+                                    <div class="space xlarge"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div> <!-- end signup-container -->
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
