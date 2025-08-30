@@ -32,7 +32,7 @@ bool digitalReadDebounced(int pin) {
 }
 
 const char* ssid = "ISAK-S";
-const char* password = "heK7bTGW";
+const char* password = "hasdfasdfasdfafdsasdfasdf";
 const char* ntpServer = "pool.ntp.org";
 unsigned long epochTime;
 long gmtOffset_sec = 32400;
