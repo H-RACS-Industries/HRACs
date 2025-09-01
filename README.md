@@ -6,6 +6,7 @@ Latest model:
 https://a360.co/4jRzeHo
 
 # introduction to the codebase
+temperature is floaat, and time is int.
 - We use a flask backend and frontend just pure html for now. We use something similar to bootstrap, but very limited, called cirrus.
 Success Criteria:
 1. Users are seperated into 3 different permission levels. Students & Teacher, facilities, and admin
