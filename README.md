@@ -9,7 +9,7 @@ https://a360.co/4jRzeHo
 - We use a flask backend and frontend just pure html for now. We use something similar to bootstrap, but very limited, called cirrus.
 Success Criteria:
 1. Users are seperated into 3 different permission levels. Students & Teacher, facilities, and admin
-2. Every user can view the data (current temperature, ideal temperature, sleep time, and wake time) and edit these data for every room
+2. Every user can view the data (current temperature, ideal temperature, sleep time, and wake time). Students can change the temperature. But only staff + admin can chagne the sleep and wake time. 
 3. The data, same as mentioned above, are stored in a database
 4. Users classified as facilities can add new rooms to the database from a form on the website.
 5. There needs to be a page where it goes into the recent_devices data base and see which devices had requested within the last 5 minutes, then allow the user to assign a room number to that device id (encrypted).
