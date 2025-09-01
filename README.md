@@ -7,7 +7,7 @@ https://a360.co/4jRzeHo
 
 # introduction to the codebase
 - We use a flask backend and frontend just pure html for now. We use something similar to bootstrap, but very limited, called cirrus.
-Main Requirements:
+Success Criteria:
 1. Users are seperated into 3 different permission levels. Students & Teacher, facilities, and admin
 2. Every user can view the data (current temperature, ideal temperature, sleep time, and wake time) and edit these data for every room
 3. The data, same as mentioned above, are stored in a database
