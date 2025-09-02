@@ -20,8 +20,8 @@ int gmtOffset_sec = 32400;
 int daylightOffset_sec = 0;
 String ntpServer = "pool.ntp.org";
 int get_ntp_time(
-  const char* ntpServer,
-  long gmtOffset_sec,
+  String ntpServer,
+  int gmtOffset_sec,
   int daylightOffset_sec
 ) {
   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
