@@ -1,0 +1,19 @@
+{% for field in form %}
+    <div style="margin-bottom: 16px;">
+        {{ field.label_tag }} <br>
+        
+        <div style="border: 2px solid beige; display: inline-block">
+            {{ field }}
+        </div>
+        
+        <small class="help-text" style="color: gray; font-size: 14px;">{{ field.help_text }}</small>
+        
+        {% for error in field.errors %}
+        <p class="error" style="color:firebrick; font-size: 0.9em;">
+            ❗ {{ error }}
+        </p>
+        {% endfor %}
+        
+        <br>
+    </div>
+{% endfor %}
