@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome!</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <header class="navbar">
+    <div class="logo">UWC-ISAK HRACS</div>
+    <nav>
+
+    </nav>
+  </header>
+
+ 
+  <div class="container">
+    <p class="intro-text">
+      Please register if you don't have an account, or login if you already have one.
+    </p>
+    <div class="button-group">
+      <a href="{% url 'register' %}" class="telegram-login-button">REGISTER</a>
+      <a href="{% url 'login' %}" class="telegram-login-button">LOGIN</a>
+    </div>
+  </div>
+
+
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Poppins', Arial, sans-serif;
+      background: #f9f9f9;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      flex-direction: column;
+    }
+
+
+    .navbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background: #009688;
+      color: #fff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 30px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+
+    .navbar .logo {
+      font-weight: 600;
+      font-size: 1.2rem;
+      letter-spacing: 1px;
+    }
+
+    .container {
+      background: #fff;
+      padding: 40px 30px;
+      border-radius: 12px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.1);
+      text-align: center;
+      max-width: 450px;
+      width: 100%;
+      margin-top: 80px; 
+    }
+
+    .intro-text {
+      font-size: 1.2rem;
+      color: #333;
+      margin-bottom: 25px;
+      font-weight: 400;
+    }
+
+   
+    .button-group {
+      display: flex;
+      justify-content: center;
+      gap: 15px; 
+    }
+
+    a.telegram-login-button {
+      display: inline-block;
+      background: #009688;
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: background 0.3s ease, transform 0.2s ease;
+    }
+
+    a.telegram-login-button:hover {
+      background: #009688;
+      transform: translateY(-2px);
+    }
+  </style>
+</body>
+</html>
