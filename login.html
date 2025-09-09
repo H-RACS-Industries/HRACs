@@ -7,26 +7,26 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
 </head>
 <body>
+
+
     <header class="navbar">
-    <div class="logo">UWC-ISAK HRACS</div>
+    <div  class="logo">UWC-ISAK HRACS</div>
     <nav>
       <div style="display: flex; align-items: center;">
-        {% if not user.is_authenticated %}
-            <span>Welcome, Guest!</span>
           <div class = "navbarbutton">
 
-            <a href="{% url 'register' %}"><button type="button">Register</button></a>
-            <a href="{% url 'login' %}"><button type="button">Sign In</button></a>
+            <a href=""><button type="button">Register</button></a>
+            <a href=""><button type="button">Sign In</button></a>
+            <a href=""><button type="button">Sign Out</button></a>
           </div>
-
-        {% else %}
-            <span>Welcome, {{ user.first_name }}!</span>
             
-            <a href="{% url 'logout' %}" style="padding-right: 10px;"><button type="button">Sign Out</button></a>
-        {% endif %}
+
     </div>
     </nav>
   </header>
+
+
+
     <div class="container">
     <h3>Sign in with your @uwcisak.jp email</h3>
     <form action="{% url 'login' %}" method="POST">
@@ -69,16 +69,36 @@
       box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     }
 
+    .navbarbutton {
+  display: flex;
+  gap: 12px; /* spacing between buttons */
+  margin-right:50px;
+}
+    .navbar button{
+    display: block;
+    gap: 12px;
+      background: #009688;
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: background 0.3s ease, transform 0.2s ease;
+      margin: 20px auto;
+      width: fit-content;
+
+    }
+
+    .navbar button:hover {
+      background: #009688;
+      transform: translateY(-2px);
+}
     .navbar .logo {
       font-weight: 600;
       font-size: 1.2rem;
       letter-spacing: 1px;
     }
-    .navbar .button{
-      padding-left:30px;
 
-
-    }
         .container {
       background: #fff;
       padding: 40px 30px;
