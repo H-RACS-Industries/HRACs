@@ -10,12 +10,25 @@
     <header class="navbar">
     <div class="logo">UWC-ISAK HRACS</div>
     <nav>
+      <div style="display: flex; align-items: center;">
+        {% if not user.is_authenticated %}
+            <span>Welcome, Guest!</span>
+          <div class = "navbarbutton">
 
+            <a href="{% url 'register' %}"><button type="button">Register</button></a>
+            <a href="{% url 'login' %}"><button type="button">Sign In</button></a>
+          </div>
+
+        {% else %}
+            <span>Welcome, {{ user.first_name }}!</span>
+            
+            <a href="{% url 'logout' %}" style="padding-right: 10px;"><button type="button">Sign Out</button></a>
+        {% endif %}
+    </div>
     </nav>
   </header>
-    {% include 'main_app/utilities/menu.html' %} 
     <div class="container">
-    <h3>Sign in with your strava.dav.tj credentials</h3>
+    <h3>Sign in with your @uwcisak.jp email</h3>
     <form action="{% url 'login' %}" method="POST">
         {% csrf_token %}
         
@@ -61,6 +74,11 @@
       font-size: 1.2rem;
       letter-spacing: 1px;
     }
+    .navbar .button{
+      padding-left:30px;
+
+
+    }
         .container {
       background: #fff;
       padding: 40px 30px;
@@ -70,7 +88,11 @@
       max-width: 450px;
       width: 100%;
       margin-top: 80px; 
+
     }
+
+
+
     button{
       display: block;
       background: #009688;
