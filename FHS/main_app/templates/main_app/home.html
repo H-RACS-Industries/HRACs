@@ -1,0 +1,237 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FHS Rooms</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Poppins', Arial, sans-serif;
+      background: #f9f9f9;
+      overflow: hidden; /* prevent full-page scroll */
+    }
+
+    .navbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background: #009688;
+      color: #fff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 50px 12px 30px; /* top/right/bottom/left */
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+      z-index: 10;
+      flex-wrap: wrap;
+    }
+
+    .navbar .logo {
+      font-weight: 600;
+      font-size: 1.2rem;
+      letter-spacing: 1px;
+    }
+
+    .admin-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .admin-links a {
+      background-color: #ffffff;
+      color: #009688;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      text-decoration: none;
+      transition: background 0.3s ease, color 0.3s ease;
+      white-space: nowrap;
+    }
+
+    .admin-links a:hover {
+      background-color: #007f70;
+      color: #ffffff;
+    }
+
+    .welcome {
+      font-weight: 600;
+      font-size: 2rem;
+      letter-spacing: 1px;
+      margin-left: 30px;
+      margin-top: 80px; /* below navbar */
+      color: #005048;
+    }
+
+    .rooms-container {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+      padding: 20px 30px;
+      max-height: calc(100vh - 180px); /* leave space for navbar + save button */
+      overflow-y: auto;
+    }
+
+    .room {
+      background: #f4faff;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      max-width: 100%;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.7rem;
+    }
+
+    th, td {
+      padding: 4px 6px;
+      border: 1px solid #ddd;
+      text-align: left;
+    }
+
+    h2 {
+      margin-top: 0;
+    }
+
+    button {
+      display: inline-block;
+      background: #009688;
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: background 0.3s ease, transform 0.2s ease;
+      position: fixed;
+      bottom: 40px;
+      right: 40px;
+      z-index: 20;
+      border: none;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #007f70;
+      transform: translateY(-2px);
+    }
+
+    /* Responsive grid columns */
+    @media (max-width: 1200px) {
+      .rooms-container {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    @media (max-width: 900px) {
+      .rooms-container {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 600px) {
+      .rooms-container {
+        grid-template-columns: 1fr;
+      }
+
+      .welcome {
+        font-size: 1.5rem;
+        margin-top: 100px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="navbar">
+    <div class="logo"><a href="{% url 'home' %}">UWC-ISAK HRACS</a></div>
+
+    {% if perms.main_app.can_promote_student %}
+      <div class="admin-links">
+        <a href="{% url 'promote_students' %}">Promote User</a>
+        <a href="/admin/main_app/auditlog/">Audit Logs</a>
+        <a href="/admin/main_app/heatingdevice/">Devices</a>
+        <a href="/admin/main_app/room/">Rooms</a>
+        
+      </div>
+      {% endif %}
+      <div class="admin-links">        
+        <p>Welcome, {{ user.first_name }}!</p>
+        <a href="{% url 'logout' %}" style="padding-right: 10px;">
+          Sign Out
+        </a>
+        <a href="/"> </a>
+      </div>
+  </header>
+
+  <div class="welcome">
+    <!-- Welcome, {{user.first_name}} -->
+  </div>
+
+  <form method="post">
+    {% csrf_token %}
+    {{ formset.management_form }}
+
+    <div class="rooms-container">
+      {% for form in formset.forms %}
+        {% with room=form.instance %}
+          <div class="room">
+            {{ form.id }}
+            <h2>{{ room.name }}</h2>
+            <table>
+              <tr>
+                <th>Current Temp</th>
+                <td>{{ room.current_temperature }}</td>
+              </tr>
+              <tr>
+                <th>Ideal Temp</th>
+                <td>
+                  {% if perms.main_app.change_temperature %}
+                    {{ form.ideal_temperature }}
+                  {% else %}
+                    {{ room.ideal_temperature }}
+                  {% endif %}
+                </td>
+              </tr>
+              <tr>
+                <th>Wake</th>
+                <td>
+                  {% if perms.main_app.change_wakesleep %}
+                    {{ form.wake_time }}
+                  {% else %}
+                    {{ room.wake_time }}
+                  {% endif %}
+                </td>
+              </tr>
+              <tr>
+                <th>Sleep</th>
+                <td>
+                  {% if perms.main_app.change_wakesleep %}
+                    {{ form.sleep_time }}
+                  {% else %}
+                    {{ room.sleep_time }}
+                  {% endif %}
+                </td>
+              </tr>
+            </table>
+          </div>
+        {% endwith %}
+      {% endfor %}
+    </div>
+
+    {% if perms.main_app.change_temperature or perms.main_app.change_wakesleep %}
+      <button type="submit">Save</button>
+    {% endif %}
+
+    {% include 'main_app/utilities/messages.html' %}
+  </form>
+</body>
+</html>

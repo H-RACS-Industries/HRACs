@@ -1,0 +1,6 @@
+venv/
+FHS/.env
+FHS/FHS/settings.py
+.DS_Store
+FHS/.DS_Store
+FHS/db.sqlite3
