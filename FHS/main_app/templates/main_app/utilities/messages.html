@@ -1,0 +1,122 @@
+{% if messages %}
+<style>
+  /* Container for all the toast messages */
+  .django-messages-container {
+    position: fixed; /* Keep it on screen even when scrolling */
+    bottom: 20px;
+    left: 20px;
+    z-index: 9999; /* Ensure it's on top of other content */
+    display: flex;
+    flex-direction: column-reverse; /* New messages appear at the bottom and stack up */
+    gap: 12px;
+  }
+
+  /* Individual message style */
+  .django-message {
+    padding: 16px 40px 16px 20px; /* Right padding for the close button */
+    border-radius: 8px;
+    color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    font-size: 16px;
+    min-width: 280px;
+    max-width: 350px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    position: relative;
+    opacity: 0;
+    transform: translateX(-20px);
+    animation: slideInFadeIn 0.5s forwards cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transition: opacity 0.4s, transform 0.4s;
+  }
+
+  /* Hiding state for JS */
+  .django-message.hiding {
+      opacity: 0;
+      transform: translateX(-20px);
+  }
+
+  /* Standard Django message levels */
+  .django-message.success { background-color: #28a745; }
+  .django-message.info { background-color: #17a2b8; }
+  .django-message.warning { background-color: #ffc107; color: #212529; } /* Dark text for light background */
+  .django-message.error { background-color: #dc3545; }
+  .django-message.debug { background-color: #6c757d; }
+
+  /* Close button ('×') */
+  .django-message .close-btn {
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: inherit; /* Inherits color (white or black) from parent */
+    opacity: 0.7;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 4px;
+    transition: opacity 0.2s;
+  }
+
+  .django-message .close-btn:hover {
+    opacity: 1;
+  }
+
+  /* Animation for messages appearing */
+  @keyframes slideInFadeIn {
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+</style>
+
+<div id="django-messages-container" class="django-messages-container">
+  {% for message in messages %}
+  <!-- The `message.tags` includes the level (e.g., "success", "error") as a class -->
+  <div class="django-message {{ message.tags }}">
+    <span>{{ message }}</span>
+    <button class="close-btn" type="button" aria-label="Close">&times;</button>
+  </div>
+  {% endfor %}
+</div>
+
+<script>
+  // Self-executing anonymous function to avoid polluting the global namespace
+  (function() {
+    const messagesContainer = document.getElementById('django-messages-container');
+    if (messagesContainer) {
+      const messages = messagesContainer.querySelectorAll('.django-message');
+      const autoHideDelay = 5000; // 5 seconds
+
+      messages.forEach((message, index) => {
+        // Function to hide and remove a message
+        const hideMessage = () => {
+          message.classList.add('hiding');
+          // Wait for the transition to finish before removing the element
+          message.addEventListener('transitionend', () => {
+            message.remove();
+            // If the container is empty, remove it too
+            if (messagesContainer.children.length === 0) {
+              messagesContainer.remove();
+            }
+          }, { once: true });
+        };
+
+        // --- Auto-hide functionality ---
+        // Stagger the auto-hide timers slightly for a nice effect if multiple messages appear at once
+        const timeoutId = setTimeout(hideMessage, autoHideDelay + (index * 500));
+
+        // --- Manual close functionality ---
+        const closeButton = message.querySelector('.close-btn');
+        if (closeButton) {
+          closeButton.addEventListener('click', () => {
+            clearTimeout(timeoutId); // Cancel the auto-hide if manually closed
+            hideMessage();
+          });
+        }
+      });
+    }
+  })();
+</script>
+{% endif %}

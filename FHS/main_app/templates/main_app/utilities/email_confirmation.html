@@ -1,0 +1,14 @@
+{% autoescape off %}
+Good day {{user.username}}!
+
+Please click on the link below to confirm your registration on DAV.TJ.
+
+
+{{ protocol }}://{{ domain }}{% url 'activate' uidb64=uid token=token %}
+
+
+Thank you for your registration.
+
+Best regards,
+DAV.TJ Admin Team
+{% endautoescape %}

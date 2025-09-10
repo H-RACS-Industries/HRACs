@@ -1,0 +1,19 @@
+<header class="navbar">
+    <div  class="logo"> <a href="{% url 'home' %}">UWC-ISAK HRACS</a> </div>
+    
+    <nav>
+        <div style="display: flex; align-items: center;">
+          <div class = "navbarbutton">
+            {% if not user.is_authenticated %}
+                <p>Welcome, Guest!</p>
+                <a href="{% url 'register' %}"><button type="button">Register</button></a>
+                <a href="{% url 'login' %}"><button type="button">Sign In</button></a>
+            {% else %}
+                <p>Welcome, {{ user.first_name }}!</p>
+                
+                <a href="{% url 'logout' %}" style="padding-right: 10px;"><button type="button">Sign Out</button></a>
+            {% endif %}
+          </div>
+        </div>
+    </nav>
+  </header>
