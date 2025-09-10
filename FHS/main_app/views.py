@@ -299,9 +299,6 @@ def sendConfirmationEmail(request, user:User):
     else:
         messages.error(request, f"Couldn't send email to {user_email}. Please check you typed it correctly and you have connection to internet.")
 
-# hamroz.kosimov@gmail.com
-# 2027.hamrozjon.qosimov@uwcisak.jp
-
 # facilities:
 #     1. change sleep wake
 #     2. add new device/Room
