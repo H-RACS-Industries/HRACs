@@ -106,7 +106,21 @@ Json Response Examples, if:
 1. Update was successful: {"status": "success"}
 2. Non-existing room_name  {"status": "room name not found"}
 
+# Website Data Structures:
 
+Room 
+1. name: String. The unique name identifying the room.
+2. ideal_temperature: Float. The target temperature the room should maintain.
+3. wake_time: datetime.time. The time of day when the room will start to warm up.
+4. sleep_time: datetime.time. The time of day when the room stop heating up.
+5. heat_sensor_id: Integer. Identifier for the heat sensor assigned to the room. For readability purposes, it is recommended that Sensor IDs don't clash with Heating Device IDs, though no error will occur.  (Note: Heat Sensor is not same as Heating Device)
+6. current_temperature: Float. The most recent temperature reading from the heat sensor.
+
+HeatingDevice
+1. id: Integer. Represent unique ID for heating devices
+2. room: Room. The room in which this heating device is in.
+
+For further questions about the Website, please contact Hamroz-JONN.
 
 
 
