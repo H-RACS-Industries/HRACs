@@ -67,3 +67,48 @@ Post control effort (POST /rooms/{room_id}/control_effort)
 
 Home V1
 ![image](https://github.com/user-attachments/assets/279d69a2-7a64-4333-b0d8-a5c61138310a)
+
+
+
+# Website API
+
+The following API links come after our.domain.name.com
+
+## Update API for Heating Devices
+Heating devices should use the this API to get the updates for their respective rooms.
+
+LINK: api/room-update/device_id
+
+Device_id - integer, representing unique ID for each heating device.
+
+Json Response Example upon successful update:
+{
+    "room_name": "KAC1", 
+    "ideal_temperature": 31.8, 
+    "wake_time": 17160, 
+    "sleep_time": 18900
+}
+
+Other error responses:
+1. {'error': 'Device with such ID does not exist.'}
+2. {'error': 'This device is not connected to any room. Please verify.'}
+
+## Update API for Room Temperature
+Heat Sensors should use this API to update the temperature for their rooms (It is agreed there's only one Heat Sensor per room)
+
+LINK: api/heat_report/room_name/temp
+
+Where:
+1. room_name is a string, like: KAC1, R1_LIVING_ROOOM, TAC2_CORRIDOR, etc...
+2. temp is a float, but dot is replaced by dash: 25.14 -> 25-14; 29 -> 29; 28.0 -> 28-0
+
+Json Response Examples, if:
+1. Update was successful: {"status": "success"}
+2. Non-existing room_name  {"status": "room name not found"}
+
+
+
+
+
+
+
