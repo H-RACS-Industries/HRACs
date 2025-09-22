@@ -12,7 +12,7 @@ urlpatterns = [
     path('logout/', views.signout, name='logout'),
     
     path("api/room-update/<int:device_id>", views.esp32_room_updates),
-    path("api/heat_report/<str:room_name>/<int:temp>", views.esp32_heat_sensor),
+    path("api/heat_report/<str:room_name>/<slug:temp>", views.esp32_heat_sensor),
 
     path('users/', views.promote_students, name='promote_students'),
     path('user/<int:pk>', views.student_profile, name='student_profile'),

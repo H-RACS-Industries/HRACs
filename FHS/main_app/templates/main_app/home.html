@@ -189,7 +189,7 @@
             <table>
               <tr>
                 <th>Current Temp</th>
-                <td>{{ room.current_temperature }}</td>
+                <td>{{ room.current_temperature|floatformat:1 }}</td>
               </tr>
               <tr>
                 <th>Ideal Temp</th>

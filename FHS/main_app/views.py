@@ -126,16 +126,22 @@ def student_profile(request, pk:int):
         'form': form
     })
 
-def esp32_heat_sensor(request, room_name: str, temp:int):
+def esp32_heat_sensor(request, room_name: str, temp:str):
     try:
         room = Room.objects.get(name=room_name)
     except Room.DoesNotExist:
         return JsonResponse({"status": 'room name not found'})
     
+    try:
+        temp = temp.replace('-', '.')
+        temp = float(temp)
+    except ValueError:
+        return JsonResponse({"status": 'bad temperature format'})
+    
     room.current_temperature = temp
     room.save()
     
-    return JsonResponse({"status": 'success'})    
+    return JsonResponse({"status": 'temperature change processed successfully'})    
 
 def esp32_room_updates(request, device_id:int):
     try:
@@ -148,11 +154,14 @@ def esp32_room_updates(request, device_id:int):
     except Room.DoesNotExist:
         return JsonResponse({'error': 'This device is not connected to any room. Please verify.'})
 
+    wake_time_secs = room.wake_time.hour * 3600 + room.wake_time.minute * 60 + room.wake_time.second
+    sleep_time_secs = room.sleep_time.hour * 3600 + room.sleep_time.minute * 60 + room.sleep_time.second
+    
     data = {
-        'name': room.name,
+        'room_name': room.name,
         'ideal_temperature': room.ideal_temperature,
-        'wake_time': room.wake_time,
-        'sleep_time': room.sleep_time
+        'wake_time': wake_time_secs,
+        'sleep_time': sleep_time_secs
     }
 
     return JsonResponse(data)
