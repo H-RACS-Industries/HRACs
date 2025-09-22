@@ -127,7 +127,6 @@ def student_profile(request, pk:int):
     })
 
 def esp32_heat_sensor(request, room_name: str, temp:str):
-    # justsa test
     try:
         room = Room.objects.get(name=room_name)
     except Room.DoesNotExist:
