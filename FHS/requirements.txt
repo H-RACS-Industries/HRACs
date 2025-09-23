@@ -1,4 +1,4 @@
-altgraph @ file:///AppleInternal/Library/BuildRoots/39d9dc1a-2111-11f0-be06-226177e5bb69/Library/Caches/com.apple.xbs/Sources/python3/altgraph-0.17.2-py2.py3-none-any.whl
+altgraph==0.17.4
 amqp==5.3.1
 anyio==4.8.0
 APScheduler==3.11.0
@@ -24,7 +24,7 @@ django_celery_results==2.6.0
 exceptiongroup==1.2.2
 filelock==3.18.0
 fonttools==4.58.0
-future @ file:///AppleInternal/Library/BuildRoots/39d9dc1a-2111-11f0-be06-226177e5bb69/Library/Caches/com.apple.xbs/Sources/python3/future-0.18.2-py3-none-any.whl
+future==1.0.0
 greenlet==3.2.2
 gunicorn==23.0.0
 h11==0.14.0
@@ -34,7 +34,7 @@ idna==3.10
 importlib_resources==6.5.2
 kiwisolver==1.4.7
 kombu==5.5.3
-macholib @ file:///AppleInternal/Library/BuildRoots/39d9dc1a-2111-11f0-be06-226177e5bb69/Library/Caches/com.apple.xbs/Sources/python3/macholib-1.15.2-py2.py3-none-any.whl
+macholib==1.16.3
 matplotlib==3.9.4
 numpy==2.0.2
 outcome==1.3.0.post0
@@ -58,7 +58,7 @@ pytz==2025.1
 redis==6.1.0
 requests==2.32.3
 selenium==4.32.0
-six @ file:///AppleInternal/Library/BuildRoots/39d9dc1a-2111-11f0-be06-226177e5bb69/Library/Caches/com.apple.xbs/Sources/python3/six-1.15.0-py2.py3-none-any.whl
+six====1.17.0
 sniffio==1.3.1
 sortedcontainers==2.4.0
 soupsieve==2.6
