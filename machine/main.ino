@@ -34,34 +34,35 @@ int get_ntp_time(
   return now;
 }
 
+
 String httpGETRequest(const char* serverName) {
   WiFiClient client;
   HTTPClient http;
-  // Your Domain name with URL path or IP address with path
   http.begin(client, serverName);
-  
-  // If you need Node-RED/server authentication, insert user and password below
-  //http.setAuthorization("REPLACE_WITH_SERVER_USERNAME", "REPLACE_WITH_SERVER_PASSWORD");
-  
-  // Send HTTP POST request
-  int httpResponseCode = http.GET();
-  
-  String payload = "{}"; 
-  
-  if (httpResponseCode>0) {
-    Serial.print("HTTP Response code: ");
-    Serial.println(httpResponseCode);
+
+  int code = http.GET();
+  String payload = "{}";
+
+  if (code > 0) {
+    Serial.printf("GET [%s] => %d\n", serverName, code);
     payload = http.getString();
+
+    // --- Quick JSON-to-number extractor ---
+    // If payload looks like {"temp":24.7} or {"value":22.3}
+    int colon = payload.indexOf(':');
+    int endBrace = payload.indexOf('}');
+    if (colon != -1 && endBrace != -1 && payload.startsWith("{")) {
+      String num = payload.substring(colon + 1, endBrace);
+      num.trim();
+      return num;   // return just the number as string
+    }
+  } else {
+    Serial.printf("GET failed, code=%d\n", code);
   }
-  else {
-    Serial.print("Error code: ");
-    Serial.println(httpResponseCode);
-  }
-  // Free resources
+
   http.end();
   return payload;
 }
-
 String httpPOSTRequest(const char* serverName, String postData) {
   WiFiClient client;
   HTTPClient http;
