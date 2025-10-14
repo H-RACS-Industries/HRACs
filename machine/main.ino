@@ -134,19 +134,65 @@ float post_ideal_temp(int room_id, float ideal_temp) {
   Serial.print("Posting ideal temperature: ");
   Serial.println(ideal_temp);
 
-  String url = String(BASE_URL) + "/post_ideal_temp";
+  String ideal_temp_formatted = String(ideal_temp, 2);
+  ideal_temp_formatted.replace('.', '-');         
+
+  String url = String(BASE_URL) + "/api/heat_report/" + String(room_id) + "/" + ideal_temp_formatted;
+
+  String resp = httpGETRequest(url.c_str());
   
-  // JSON payload with both room_id and ideal_temp
-  String jsonData = "{\"room_id\":" + String(room_id) + // scuffed way to deal with cpp annoying ass string concatonataiton
-                    ",\"ideal_temp\":" + String(ideal_temp, 2) + "}";
+  // code commented by Hamroz, because a single GET response is sufficient
+  // // JSON payload with both room_id and ideal_temp
+  // String jsonData = "{\"room_id\":" + String(room_id) + // scuffed way to deal with cpp annoying ass string concatonataiton
+  //                   ",\"ideal_temp\":" + String(ideal_temp, 2) + "}";
 
-  String response = httpPOSTRequest(url.c_str(), jsonData);
+  // String response = httpPOSTRequest(url.c_str(), jsonData);
 
-  float server_reply = response.toFloat();  // parse reply (if numeric)
-  Serial.print("Server replied: ");
-  Serial.println(server_reply);
+  // float server_reply = response.toFloat();  // parse reply (if numeric)
+
+  // Serial.print("Server replied: ");
+  // Serial.println(server_reply);
 
   return server_reply;
+}
+
+#include <ArduinoJson.h>
+
+bool fetch_room_state(int room_id, float& out_current_temp, float& out_ideal_temp, int& out_wake_time, int& out_sleep_time) {
+  Serial.println("Getting room state (single JSON)");
+  String url = String(BASE_URL) + "/api/room-update/" + String(room_id); // <— change if needed
+  String resp = httpGETRequest(url.c_str());
+
+  if (resp.length() == 0) {
+  Serial.println("Empty HTTP response");
+  return false;
+  }
+
+  // Parse JSON
+  StaticJsonDocument<256> doc; // increase if your JSON grows
+  DeserializationError err = deserializeJson(doc, resp);
+  if (err) {
+  Serial.print("JSON parse error: ");
+  Serial.println(err.c_str());
+  Serial.print("Payload: ");
+  Serial.println(resp);
+  return false;
+  }
+
+  // Extract with safe defaults
+  out_current_temp = doc["current_temperature"] | NAN;
+  out_ideal_temp   = doc["ideal_temperature"]   | NAN;
+  out_wake_time    = doc["wake_time"]         | -1;
+  out_sleep_time   = doc["sleep_time"]        | -1;
+
+  Serial.print("current_temperature="); Serial.println(out_current_temp);
+  Serial.print("ideal_temperature=");   Serial.println(out_ideal_temp);
+  Serial.print("wake_time=");         Serial.println(out_wake_time);
+  Serial.print("sleep_time=");        Serial.println(out_sleep_time);
+
+  // Basic sanity check (optional)
+  return !isnan(out_current_temp) && !isnan(out_ideal_temp) &&
+  out_wake_time >= 0 && out_sleep_time >= 0;
 }
 
 float get_current_temp(int room_id) {
@@ -177,6 +223,8 @@ int get_sleep(int room_id) {
   Serial.println(sleep_time);
   return sleep_time;
 }
+
+
 
 #include <WiFi.h>
 
@@ -463,10 +511,14 @@ void loop() {
   if current_time - previous_time >= 300: //300 is 5 minutes, change accordingly
     previous_time = current_time;
     
-    current_temp = get_current_temp(ID);
-    ideal_temp_new = get_ideal_temp(ID);
-    wake_time = get_wake(ID);
-    sleep_time = get_sleep(ID);
+    // change by Hamroz
+    if (!fetch_room_state(ID, current_temp, ideal_temp_new, wake_time, sleep_time)) {
+      // Fallback to individual endpoints if the JSON call fails
+      current_temp   = get_current_temp(ID);
+      ideal_temp_new = get_ideal_temp(ID);
+      wake_time      = get_wake(ID);
+      sleep_time     = get_sleep(ID);
+    }
 
     if (current_time % 86400 > sleep_time || current_time % 86400 < wake_time) {
       if (motor_reset_done != true) {
