@@ -160,6 +160,7 @@ def esp32_room_updates(request, device_id:int):
     data = {
         'room_name': room.name,
         'ideal_temperature': room.ideal_temperature,
+        'current_temperature': room.current_temperature,
         'wake_time': wake_time_secs,
         'sleep_time': sleep_time_secs
     }
