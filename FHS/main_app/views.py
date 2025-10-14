@@ -126,9 +126,9 @@ def student_profile(request, pk:int):
         'form': form
     })
 
-def esp32_heat_sensor(request, room_name: str, temp:str):
+def esp32_heat_sensor(request, room_id: int, temp:str):
     try:
-        room = Room.objects.get(name=room_name)
+        room = Room.objects.get(pk=room_id)
     except Room.DoesNotExist:
         return JsonResponse({"status": 'room name not found'})
     
