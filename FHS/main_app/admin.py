@@ -5,7 +5,7 @@ from .models import Room, AuditLog, HeatingDevice
 
 @admin.register(Room)
 class RoomAdmin(admin.ModelAdmin):
-    list_display = ("id", "name",'ideal_temperature', 'wake_time', 'sleep_time')
+    list_display = ("id", "name",'ideal_temperature', 'current_temperature' , 'wake_time', 'sleep_time')
     exclude = ("current_temperature",)
     
 @admin.register(AuditLog)

@@ -126,6 +126,23 @@ def student_profile(request, pk:int):
         'form': form
     })
 
+def post_ideal_temp(request, room_id: int, temp:str):
+    try:
+        room = Room.objects.get(pk=room_id)
+    except Room.DoesNotExist:
+        return JsonResponse({"status": 'room name not found'})
+    
+    try:
+        temp = temp.replace('-', '.')
+        temp = float(temp)
+    except ValueError:
+        return JsonResponse({"status": 'bad temperature format'})
+    
+    room.ideal_temperature = temp
+    room.save()
+    
+    return JsonResponse({"status": 'temperature change processed successfully'})    
+    
 def esp32_heat_sensor(request, room_id: int, temp:str):
     try:
         room = Room.objects.get(pk=room_id)

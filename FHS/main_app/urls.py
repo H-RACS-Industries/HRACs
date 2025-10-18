@@ -11,6 +11,7 @@ urlpatterns = [
     path('login/', views.signin, name='login'),
     path('logout/', views.signout, name='logout'),
     
+    path("api/post_ideal_temp/<int:room_id>/<slug:temp>", views.post_ideal_temp),
     path("api/room-update/<int:device_id>", views.esp32_room_updates),
     path("api/heat_report/<int:room_id>/<slug:temp>", views.esp32_heat_sensor),
 

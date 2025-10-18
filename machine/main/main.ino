@@ -14,6 +14,7 @@
   // get current tuning paramters
 // pid() -> int
 #include <HTTPClient.h>
+
 // check_sleep()
 #include <WiFi.h>
 int gmtOffset_sec = 32400;
@@ -24,7 +25,7 @@ int get_ntp_time(
   int gmtOffset_sec,
   int daylightOffset_sec
 ) {
-  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer.c_str());
   time_t now;
   struct tm timeinfo;
   if (!getLocalTime(&timeinfo)) {
@@ -130,18 +131,19 @@ bool calibrate_stepper_motor() {
 
 #define BASE_URL "http://192.168.6.115:8000"
 
-float post_ideal_temp(int room_id, float ideal_temp) {
+void post_ideal_temp(int room_id, float ideal_temp) {
   Serial.print("Posting ideal temperature: ");
   Serial.println(ideal_temp);
 
   String ideal_temp_formatted = String(ideal_temp, 2);
   ideal_temp_formatted.replace('.', '-');         
 
-  String url = String(BASE_URL) + "/api/heat_report/" + String(room_id) + "/" + ideal_temp_formatted;
+  String url = String(BASE_URL) + "/api/post_ideal_temp/" + String(room_id) + "/" + ideal_temp_formatted;
 
-  String resp = httpGETRequest(url.c_str());
+  httpGETRequest(url.c_str());
   
   // code commented by Hamroz, because a single GET response is sufficient
+
   // // JSON payload with both room_id and ideal_temp
   // String jsonData = "{\"room_id\":" + String(room_id) + // scuffed way to deal with cpp annoying ass string concatonataiton
   //                   ",\"ideal_temp\":" + String(ideal_temp, 2) + "}";
@@ -153,7 +155,7 @@ float post_ideal_temp(int room_id, float ideal_temp) {
   // Serial.print("Server replied: ");
   // Serial.println(server_reply);
 
-  return server_reply;
+  // return server_reply;
 }
 
 #include <ArduinoJson.h>
@@ -161,7 +163,15 @@ float post_ideal_temp(int room_id, float ideal_temp) {
 bool fetch_room_state(int room_id, float& out_current_temp, float& out_ideal_temp, int& out_wake_time, int& out_sleep_time) {
   Serial.println("Getting room state (single JSON)");
   String url = String(BASE_URL) + "/api/room-update/" + String(room_id); // <— change if needed
-  String resp = httpGETRequest(url.c_str());
+
+  Serial.println("url: " + url);
+
+  WiFiClient client;    
+  HTTPClient http;      
+  http.begin(client, url);
+  int code = http.GET();
+
+  String resp = http.getString();
 
   if (resp.length() == 0) {
   Serial.println("Empty HTTP response");
@@ -244,21 +254,22 @@ void setup_wifi(const char* ssid, const char* password) {
 }
 
 # include <Wire.h>
-# include "SSD1306.h"//ディスプレイ用ライブラリを読み込み
+// # include "SSD1306.h"//ディスプレイ用ライブラリを読み込み
 
-SSD1306  display(0x3c, 21, 22); //SSD1306インスタンスの作成（I2Cアドレス,SDA,SCL）
+// SSD1306  display(0x3c, 21, 22); //SSD1306インスタンスの作成（I2Cアドレス,SDA,SCL）
 
 void setup_screen() {
-  display.init();    //ディスプレイを初期化
-  display.setFont(ArialMT_Plain_16);    //フォントを設定
-  display.drawString(0, 0, "Hello SSD1306!!");    //(0,0)の位置にHello Worldを表示
-  display.display();   //指定された情報を描画
+  // display.init();    //ディスプレイを初期化
+  // display.setFont(ArialMT_Plain_16);    //フォントを設定
+  // display.drawString(0, 0, "Hello SSD1306!!");    //(0,0)の位置にHello Worldを表示
+  // display.display();   //指定された情報を描画
 }
 void update_screen(String message) {
-  display.clear();
-  display.drawString(0,0, message);
-  display.display();
+  // display.clear();
+  // display.drawString(0,0, message);
+  // display.display();
 }
+
 #define checkButtonPin 25 // the number of the pushbutton pin
 #define tempUpButton 19
 #define tempDownButton 18
@@ -274,10 +285,10 @@ int previous_time = 0;
 void setup() {
   Serial.begin(115200);
   setup_wifi("ISAK-S", "heK7bTGW"); 
-  get_ntp_time(gmtOffset_sec,daylightOffset_sec,ntpServer);
+  get_ntp_time(ntpServer,gmtOffset_sec,daylightOffset_sec);
 
   setup_screen();
-  setup_button();
+  setup_buttons();
 
   stepper_setup();
   calibrate_stepper_motor();
@@ -291,7 +302,7 @@ float ideal_temp_new;
 int wake_time;
 int sleep_time;
 
-#define ID 69
+#define ID 1
 
 bool motor_reset_done = false;  // flag
 void reset_motor() {
@@ -507,17 +518,19 @@ private:
 };
 
 void loop() {
-  current_time = get_ntp_time();
-  if current_time - previous_time >= 300: //300 is 5 minutes, change accordingly
+  current_time = get_ntp_time(ntpServer,gmtOffset_sec,daylightOffset_sec);
+  if (current_time - previous_time >= 10) //300 is 5 minutes, change accordingly 
+  {
     previous_time = current_time;
     
     // change by Hamroz
     if (!fetch_room_state(ID, current_temp, ideal_temp_new, wake_time, sleep_time)) {
+      Serial.println("Couldnt fetch room state XD");
       // Fallback to individual endpoints if the JSON call fails
-      current_temp   = get_current_temp(ID);
-      ideal_temp_new = get_ideal_temp(ID);
-      wake_time      = get_wake(ID);
-      sleep_time     = get_sleep(ID);
+      // current_temp   = get_current_temp(ID);
+      // ideal_temp_new = get_ideal_temp(ID);
+      // wake_time      = get_wake(ID);
+      // sleep_time     = get_sleep(ID);
     }
 
     if (current_time % 86400 > sleep_time || current_time % 86400 < wake_time) {
@@ -535,13 +548,16 @@ void loop() {
     pid.update(current temp)
     pid.output() // moves motor
 
-    if digitalRead(up_button) == LOW:
+    if digitalRead(up_button) == LOW {
       ideal_temp = ideal_temp - 0.25;
       update_screeen(String(setpoint) + "°C");
       post_ideal_temp(ID, setpoint);
+    }
       //send post request to server
-    if digitalRead(down_button) == LOW:
+    if digitalRead(down_button) == LOW {
       ideal_temp = ideal_temp + 0.25;
       update_screeen(String(setpoint) + "°C");
       post_ideal_temp(ID, setpoint);
+    }
+  }
 }
