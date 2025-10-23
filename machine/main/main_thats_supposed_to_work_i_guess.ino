@@ -11,8 +11,15 @@
 #define BASE_URL   "http://192.168.4.15:8000/"   
 #define ID         11
 
+// - screen setup
 # include <Wire.h>
 # include "SSD1306.h" //ディスプレイ用ライブラリを読み込み
+
+
+// - button control buttons
+#define checkButtonPin 25 // the number of the pushbutton pin
+#define tempUpButton 19
+#define tempDownButton 18
 
 //本体裏側　0x78に接続→0x3C 0x7A→0x3A
 SSD1306  display(0x3c, 21, 22); //SSD1306インスタンスの作成（I2Cアドレス,SDA,SCL）
@@ -263,7 +270,9 @@ void stepper_setup() {
 }
 
 void button_setup() {
-    pinMode(checkButtonPin, INPUT_PULLUP);
+  pinMode(checkButtonPin, INPUT_PULLUP);
+  pinMode(tempUpButton , INPUT_PULLUP);
+  pinMode(tempDownButton, INPUT_PULLUP);
 }
 
 void move_motor(bool dir, int steps) {
