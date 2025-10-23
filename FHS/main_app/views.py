@@ -14,11 +14,14 @@ from django.http import JsonResponse, Http404, HttpResponse
 import re
 import json
 
+from decouple import config
+
 from .tokens import account_activation_token
 from .models import Room, AuditLog, HeatingDevice
 from .forms import UserRegistrationForm, UserSigninForm, RoomFormSet, StudentPromotionForm, NewRoomForm
-from .decorators import user_not_authenticated
+from .decorators import user_not_authenticated, verify_esp32_connection
 
+# main functionality and views
 def home(request):
     if not request.user.is_authenticated:
         return render(request, 'main_app/first_time.html')
@@ -126,7 +129,17 @@ def student_profile(request, pk:int):
         'form': form
     })
 
-def post_ideal_temp(request, room_id: int, temp:str):
+# API views
+
+@verify_esp32_connection
+def esp32_post_ideal_temp(request, device_id: int, temp:str):
+    try:
+        device = HeatingDevice.objects.get(pk=device_id)
+    except Room.DoesNotExist:
+        return JsonResponse({"status": 'device id not found'})
+    
+    room_id = device.room.id
+    
     try:
         room = Room.objects.get(pk=room_id)
     except Room.DoesNotExist:
@@ -143,7 +156,15 @@ def post_ideal_temp(request, room_id: int, temp:str):
     
     return JsonResponse({"status": 'temperature change processed successfully'})    
     
-def esp32_heat_sensor(request, room_id: int, temp:str):
+@verify_esp32_connection
+def esp32_heat_sensor(request, device_id: int, temp:str):
+    try:
+        device = HeatingDevice.objects.get(pk=device_id)
+    except Room.DoesNotExist:
+        return JsonResponse({"status": 'device id not found'})
+    
+    room_id = device.room.id
+    
     try:
         room = Room.objects.get(pk=room_id)
     except Room.DoesNotExist:
@@ -160,6 +181,7 @@ def esp32_heat_sensor(request, room_id: int, temp:str):
     
     return JsonResponse({"status": 'temperature change processed successfully'})    
 
+@verify_esp32_connection
 def esp32_room_updates(request, device_id:int):
     try:
         device = HeatingDevice.objects.get(pk=device_id)
@@ -184,6 +206,22 @@ def esp32_room_updates(request, device_id:int):
 
     return JsonResponse(data)
 
+@verify_esp32_connection
+def esp32_new_device(request, device_id: int):
+    device, created = HeatingDevice.objects.get_or_create(pk=device_id)
+    
+    if created:        
+        return JsonResponse(
+            {"success": f"Created device with ID {device_id}"},
+            status=201
+        )
+    else:
+        return JsonResponse(
+            {"success": f"Device with ID {device_id} already exists"},
+            status=200
+        )
+
+# Authorization
 @user_not_authenticated
 def register(request):
     def refill_form():

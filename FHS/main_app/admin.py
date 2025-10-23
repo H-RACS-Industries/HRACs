@@ -11,7 +11,9 @@ class RoomAdmin(admin.ModelAdmin):
 @admin.register(AuditLog)
 class AuditLogAdmin(admin.ModelAdmin):
     list_display = ("timestamp", "room", "user", "old_value", "new_value")
-        
+
+@admin.register(HeatingDevice)
+class HeatingDeviceAdmin(admin.ModelAdmin):
+    readonly_fields = ("id", "created_at")
 
 admin.site.register(Permission)
-admin.site.register(HeatingDevice)  

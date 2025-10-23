@@ -24,7 +24,8 @@ class Room(models.Model):
     
 class HeatingDevice(models.Model):
     id = models.IntegerField(null=False, blank=False, primary_key=True)
-    room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='devices')
+    room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='devices', null=True, blank=False)
+    created_at = models.DateTimeField(auto_now=True)
     
     def __str__(self):
         return f"ID: {self.id}     |     Location: {self.room}"

@@ -1,200 +1,241 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <time.h>
+#include <arduino_secrets.h>   
+#include <mbedtls/sha256.h>
+#include <Preferences.h>
 
 // ----------- CONFIG -------------
-#define WIFI_SSID     "ISAK-S"
-#define WIFI_PASS     "heK7bTGW"
-#define BASE_URL      "http://192.168.4.15:8000/api/"
-#define ID       1
-// --------------------------------
+#define WIFI_SSID  "ISAK-S"
+#define WIFI_PASS  "heK7bTGW"
+#define BASE_URL   "http://192.168.4.15:8000/"   
+#define ID         11
 
-int gmtOffset_sec = 32400;  // +9h JST
+const long SECONDS_PER_DAY = 86400;
+int gmtOffset_sec = 9 * 3600;  // JST
 int daylightOffset_sec = 0;
 String ntpServer = "pool.ntp.org";
 
 int previous_time = 0;
 int current_time = 0;
 
-// ---- Connect WiFi ----a
+// ---------- Helpers: SHA256 + hex + nonce + time ----------
+String to_hex(const uint8_t* buf, size_t len) {
+  static const char* hex = "0123456789abcdef";
+  String out;
+  out.reserve(len * 2);
+  for (size_t i = 0; i < len; i++) {
+    out += hex[(buf[i] >> 4) & 0xF];
+    out += hex[ buf[i]       & 0xF];
+  }
+  return out; // lowercase
+}
+
+String sha256_hex(const String& data) {
+  uint8_t out[32];
+  mbedtls_sha256_context ctx;
+  mbedtls_sha256_init(&ctx);
+  mbedtls_sha256_starts(&ctx, 0);
+  mbedtls_sha256_update(&ctx, (const unsigned char*)data.c_str(), data.length());
+  mbedtls_sha256_finish(&ctx, out);
+  mbedtls_sha256_free(&ctx);
+  return to_hex(out, 32);
+}
+
+// base = SECRET || METHOD|PATH|TS|NONCE|BODY
+String make_signature(const String& method, const String& path, const String& ts,
+                      const String& nonce, const String& body) {
+  String base;
+  base.reserve(strlen(SECRET_KEY) + method.length() + path.length() + ts.length() + nonce.length() + body.length() + 10);
+  base += SECRET_KEY;
+  base += method; base += "|"; base += path;  base += "|";
+  base += ts;     base += "|"; base += nonce; base += "|";
+  base += body;
+
+  return sha256_hex(base); // lowercase hex
+}
+
+String rand_nonce() {
+  uint32_t r = esp_random();
+  char buf[9]; snprintf(buf, sizeof(buf), "%08x", r);
+  return String(buf);
+}
+
+bool ensure_time_ready(unsigned long timeout_ms = 10000) {
+  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer.c_str());
+  unsigned long start = millis();
+  time_t now;
+  do {
+    delay(200);
+    time(&now);
+    if (now > 1700000000) return true; // ~2023+
+  } while (millis() - start < timeout_ms);
+  Serial.println("WARN: NTP time not ready; signatures may be rejected");
+  return false;
+}
+
+// ---------- WiFi ----------
 void setup_wifi(const char* ssid, const char* password) {
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
   Serial.print("\nConnecting to WiFi");
-  while (WiFi.status() != WL_CONNECTED) {
-    Serial.print(".");
-    delay(500);
-  }
+  while (WiFi.status() != WL_CONNECTED) { Serial.print("."); delay(500); }
   Serial.println("\nConnected!");
-  Serial.print("IP: ");
-  Serial.println(WiFi.localIP());
+  Serial.print("IP: "); Serial.println(WiFi.localIP());
 }
 
-// ---- NTP ----
+// ---------- NTP wrapper ----------
 int get_ntp_time(String ntpServer, int gmtOffset_sec, int daylightOffset_sec) {
-  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer.c_str());
-  time_t now;
-  struct tm timeinfo;
-  if (!getLocalTime(&timeinfo)) {
-    Serial.println("Failed to obtain time");
-  }
-  time(&now);
+  // assume ensure_time_ready() was already called in setup
+  time_t now; time(&now);
   return now;
 }
 
-String httpGETRequest(const char* serverName) {
-  WiFiClient client;
-  HTTPClient http;
-  http.begin(client, serverName);
+// ---------- Signature headers (call this before GET/POST) ----------
+void add_auth_headers(HTTPClient& http, const String& method, const String& fullUrl,
+                      const String& pathForSig, const String& body /*may be ""*/) {
+  // TS & nonce
+  time_t now_t; time(&now_t);
+  String ts = String((unsigned long)now_t);
+  String nonce = rand_nonce();
 
-  int code = http.GET();
-  String payload = "{}";
+  // Build signature on PATH (not the full URL)
+  String sig = make_signature(method, pathForSig, ts, nonce, body);
 
-  if (code > 0) {
-    Serial.printf("GET [%s] => %d\n", serverName, code);
-    payload = http.getString();
-
-    // --- Quick JSON-to-number extractor ---
-    // If payload looks like {"temp":24.7} or {"value":22.3}
-    int colon = payload.indexOf(':');
-    int endBrace = payload.indexOf('}');
-    if (colon != -1 && endBrace != -1 && payload.startsWith("{")) {
-      String num = payload.substring(colon + 1, endBrace);
-      num.trim();
-      return num;   // return just the number as string
-    }
-  } else {
-    Serial.printf("GET failed, code=%d\n", code);
-  }
-
-  http.end();
-  return payload;
+  // Add headers
+  http.addHeader("X-Device-Id", String(ID));   // send as string
+  http.addHeader("X-Timestamp", ts);
+  http.addHeader("X-Nonce", nonce);
+  http.addHeader("X-Signature", sig);
 }
 
-
-// ---- HTTP POST ----
-String httpPOSTRequest(const char* serverName, String postData) {
-  WiFiClient client;
-  HTTPClient http;
-  http.begin(client, serverName);
-  http.addHeader("Content-Type", "application/json");
-  int code = http.POST(postData);
-  String payload = "{}";
-  if (code > 0) {
-    Serial.printf("POST [%s] => %d\n", serverName, code);
-    payload = http.getString();
-  } else {
-    Serial.printf("POST failed, code=%d\n", code);
-  }
-  http.end();
-  return payload;
-}
-
-// ---- API Wrappers ----
-float get_current_temp(int room_id) {
-  String url = String(BASE_URL) + "/get_current_temp/" + String(room_id);
-  return httpGETRequest(url.c_str()).toFloat();
-}
-
-float get_ideal_temp(int room_id) {
-  String url = String(BASE_URL) + "/get_ideal_temp/" + String(room_id);
-  return httpGETRequest(url.c_str()).toFloat();
-}
-
-// float post_ideal_temp(int room_id, float temp) {
-//   String url = String(BASE_URL) + "/post_ideal_temp";
-//   String json = "{\"room_id\":" + String(room_id) + ",\"ideal_temp\":" + String(temp, 2) + "}";
-//   String reply = httpPOSTRequest(url.c_str(), json);
-//   return reply.toFloat();
-// }
-
+// ---------- API wrappers ----------
 void post_ideal_temp(int room_id, float ideal_temp) {
   Serial.print("Posting ideal temperature: ");
   Serial.println(ideal_temp);
 
   String ideal_temp_formatted = String(ideal_temp, 2);
-  ideal_temp_formatted.replace('.', '-');         
+  ideal_temp_formatted.replace('.', '-');
 
-  String url = String(BASE_URL) + "post_ideal_temp/" + String(room_id) + "/" + ideal_temp_formatted;
+  String path = "api/post_ideal_temp/" + String(room_id) + "/" + ideal_temp_formatted + "/";  
+  String url  = String(BASE_URL) + path;
 
-  httpGETRequest(url.c_str());
+  WiFiClient client;
+  HTTPClient http;
+  http.begin(client, url);
+
+  // GET with signature (body empty)
+  add_auth_headers(http, "GET", url, "/" + path, "");   // sign "/api/..."? If your verifier uses request.path, include leading "/" and the exact path portion it sees (e.g. "/api/post_ideal_temp/.../").
+  int code = http.GET();
+
+  if (code > 0) {
+    Serial.printf("Response code: %d\n", code);
+    Serial.println(http.getString());
+  } else {
+    Serial.printf("HTTP error: %d\n", code);
+  }
+
+  http.end();
 }
 
 #include <ArduinoJson.h>
 bool fetch_room_state(int room_id, float& out_current_temp, float& out_ideal_temp, int& out_wake_time, int& out_sleep_time) {
-  Serial.println("Getting room state (single JSON)");
-  String url = String(BASE_URL) + "room-update/" + String(room_id); // <— change if needed
+  Serial.println("Getting room state");
 
-  Serial.println("url: " + url);
+  
+  String path = "api/room-update/" + String(room_id) + "/";   // add trailing slash
+  String url  = String(BASE_URL) + path;
 
-  WiFiClient client;    
-  HTTPClient http;      
+  WiFiClient client;
+  HTTPClient http;
   http.begin(client, url);
+
+  // GET with signature (empty body)
+  add_auth_headers(http, "GET", url, "/" + path, "");
+
   int code = http.GET();
+  if (code <= 0) {
+    Serial.println("Could not establish connection to server.");
+    http.end();
+    return false;
+  }
 
   String resp = http.getString();
+  http.end();
 
-  if (resp.length() == 0) {
-  Serial.println("Empty HTTP response");
-  return false;
-  }
-
-  // Parse JSON
-  StaticJsonDocument<256> doc; // increase if your JSON grows
+  StaticJsonDocument<256> doc;
   DeserializationError err = deserializeJson(doc, resp);
   if (err) {
-  Serial.print("JSON parse error: ");
-  Serial.println(err.c_str());
-  Serial.print("Payload: ");
-  Serial.println(resp);
-  return false;
+    Serial.print("JSON parse error: "); Serial.println(err.c_str());
+    Serial.print("Payload: "); Serial.println(resp);
+    return false;
   }
 
-  // Extract with safe defaults
   out_current_temp = doc["current_temperature"] | NAN;
   out_ideal_temp   = doc["ideal_temperature"]   | NAN;
-  out_wake_time    = doc["wake_time"]         | -1;
-  out_sleep_time   = doc["sleep_time"]        | -1;
+  out_wake_time    = doc["wake_time"]           | -1;
+  out_sleep_time   = doc["sleep_time"]          | -1;
 
   Serial.print("current_temperature="); Serial.println(out_current_temp);
   Serial.print("ideal_temperature=");   Serial.println(out_ideal_temp);
-  Serial.print("wake_time=");         Serial.println(out_wake_time);
-  Serial.print("sleep_time=");        Serial.println(out_sleep_time);
+  Serial.print("wake_time=");           Serial.println(out_wake_time);
+  Serial.print("sleep_time=");          Serial.println(out_sleep_time);
 
-  // Basic sanity check (optional)
   return !isnan(out_current_temp) && !isnan(out_ideal_temp) &&
-  out_wake_time >= 0 && out_sleep_time >= 0;
+         out_wake_time >= 0 && out_sleep_time >= 0;
 }
 
-// ---- Setup ----
+void ensure_device_exists() {
+  Serial.println("Attempting to create the device if it is new...");
+
+  String path = "api/new_device/" + String(ID) + "/";
+  String url  = String(BASE_URL) + path;
+
+  WiFiClient client;
+  HTTPClient http;
+  http.begin(client, url);
+
+  // GET with signature (body empty)
+  add_auth_headers(http, "GET", url, "/" + path, "");   // sign "/api/..."? If your verifier uses request.path, include leading "/" and the exact path portion it sees (e.g. "/api/post_ideal_temp/.../").
+  int code = http.GET();
+
+  if (code > 0) {
+    Serial.println(http.getString());
+  } else {
+    Serial.printf("HTTP error: %d\n", code);
+  }
+
+  http.end();
+}
+
+// ---------- Setup / Loop ----------
+
 void setup() {
   Serial.begin(115200);
   delay(1000);
 
   setup_wifi(WIFI_SSID, WIFI_PASS);
-  int now = get_ntp_time(ntpServer, gmtOffset_sec, daylightOffset_sec);
-  Serial.print("Epoch time: ");
-  Serial.println(now);
+  ensure_time_ready();
+
+  time_t now; time(&now);
+  Serial.print("Epoch time: "); Serial.println((unsigned long)now);
+
+  ensure_device_exists();
 
   Serial.println("\n--- Testing API Requests ---");
-
-  post_ideal_temp(ID, 1000.75);
-
-  Serial.println("--- Done ---");
+  post_ideal_temp(ID, 2048.2);
+  Serial.println("--- Test Done, God knows what happened ---");
 }
 
-float current_temp = -1, ideal_temp_new=-1;
-int wake_time=-1, sleep_time=-1;
+float current_temp = -1, ideal_temp_new = -1;
+int   wake_time_v  = -1, sleep_time_v  = -1;
 
 void loop() {
-  current_time = get_ntp_time(ntpServer,gmtOffset_sec,daylightOffset_sec);
-  if (current_time - previous_time >= 10) // in seconds
-  {
-    Serial.println("entered to if statement");
+  current_time = get_ntp_time(ntpServer, gmtOffset_sec, daylightOffset_sec);
+  if (current_time - previous_time >= 20) {
     previous_time = current_time;
-    
-    if (!fetch_room_state(ID, current_temp, ideal_temp_new, wake_time, sleep_time)) {
-      Serial.println("Couldnt fetch room state XD");
+    if (!fetch_room_state(ID, current_temp, ideal_temp_new, wake_time_v, sleep_time_v)) {
+      Serial.println("Couldn’t fetch room state");
     }
   }
 }

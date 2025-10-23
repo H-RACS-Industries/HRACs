@@ -5,3 +5,4 @@ FHS/FHS/settings.py
 FHS/.DS_Store
 FHS/db.sqlite3
 .vscode/
+machine/main/arduino_secrets.h
