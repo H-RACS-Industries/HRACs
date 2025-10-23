@@ -11,6 +11,12 @@
 #define BASE_URL   "http://192.168.4.15:8000/"   
 #define ID         11
 
+# include <Wire.h>
+# include "SSD1306.h" //ディスプレイ用ライブラリを読み込み
+
+//本体裏側　0x78に接続→0x3C 0x7A→0x3A
+SSD1306  display(0x3c, 21, 22); //SSD1306インスタンスの作成（I2Cアドレス,SDA,SCL）
+
 const long SECONDS_PER_DAY = 86400;
 int gmtOffset_sec = 9 * 3600;  // JST
 int daylightOffset_sec = 0;
@@ -226,11 +232,19 @@ void setup() {
   post_ideal_temp(ID, 2048.2);
   Serial.println("--- Test Done, God knows what happened ---"); // haha
 
+
   // stepper
   stepper_setup();
   button_setup();
 
   calibrate_stepper_motor();
+
+
+  //screen
+  display.init();    //ディスプレイを初期化
+  display.setFont(ArialMT_Plain_16);    //フォントを設定
+  display.drawString(0, 0, "VXP10 Initializing!!");    //(0,0)の位置にHello Worldを表示
+  display.display();   //指定された情報を描画
 }
 
 float current_temp = -1, ideal_temp_new = -1;
