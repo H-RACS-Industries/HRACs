@@ -19,7 +19,7 @@ from decouple import config
 from .tokens import account_activation_token
 from .models import Room, AuditLog, HeatingDevice
 from .forms import UserRegistrationForm, UserSigninForm, RoomFormSet, StudentPromotionForm, NewRoomForm
-from .decorators import user_not_authenticated, verify_esp32_connection
+from .utils.decorators import user_not_authenticated, verify_esp32_connection
 
 # main functionality and views
 def home(request):
