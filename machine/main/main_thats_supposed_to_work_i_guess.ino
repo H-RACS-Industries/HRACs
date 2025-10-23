@@ -224,11 +224,51 @@ void setup() {
 
   Serial.println("\n--- Testing API Requests ---");
   post_ideal_temp(ID, 2048.2);
-  Serial.println("--- Test Done, God knows what happened ---");
+  Serial.println("--- Test Done, God knows what happened ---"); // haha
+
+  // stepper
+  stepper_setup();
+  button_setup();
+
+  calibrate_stepper_motor();
 }
 
 float current_temp = -1, ideal_temp_new = -1;
 int   wake_time_v  = -1, sleep_time_v  = -1;
+
+
+// - stepper motor stuff-
+// stepper motor
+#define dirPin 32
+#define stepPin 33
+#define checkButtonPin 25
+
+void stepper_setup() {
+    pinMode(stepPin, OUTPUT);
+    pinMode(dirPin, OUTPUT);
+}
+
+void button_setup() {
+    pinMode(checkButtonPin, INPUT_PULLUP);
+}
+
+void move_motor(bool dir, int steps) {
+    digitalWrite(dirPin, dir);
+    // These four lines result in 1 step:wwww
+    for (int i = 0; i < steps; i++) {
+        digitalWrite(stepPin, HIGH);
+        delayMicroseconds(500);
+        digitalWrite(stepPin, LOW);
+        delayMicroseconds(500);
+    }
+}
+
+bool calibrate_stepper_motor() {
+    while (digitalRead(checkButtonPin) == HIGH) {
+        move_motor(0, 1);
+    }
+    return true;
+}
 
 void loop() {
   current_time = get_ntp_time(ntpServer, gmtOffset_sec, daylightOffset_sec);
