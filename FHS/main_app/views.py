@@ -138,6 +138,9 @@ def esp32_post_ideal_temp(request, device_id: int, temp:str):
     except Room.DoesNotExist:
         return JsonResponse({"status": 'device id not found'})
     
+    if not device.room:
+        return JsonResponse({"status": "Device has no room assigned. Please assign it to a room through Admin Panel"})
+    
     room_id = device.room.id
     
     try:

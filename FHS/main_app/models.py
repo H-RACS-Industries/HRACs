@@ -8,7 +8,7 @@ class Room(models.Model):
     wake_time = models.TimeField(default=time(7, 0), blank=False)
     sleep_time = models.TimeField(default=time(22, 0), blank=False)
     heat_sensor_id = models.IntegerField(default=0, null=False, blank=False) # unique=True
-    current_temperature = models.FloatField(default=None, null=True, blank=True)
+    current_temperature = models.FloatField(default=-1, null=True, blank=True)
     
     class Meta:
         permissions = [

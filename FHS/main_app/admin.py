@@ -5,8 +5,8 @@ from .models import Room, AuditLog, HeatingDevice
 
 @admin.register(Room)
 class RoomAdmin(admin.ModelAdmin):
-    list_display = ("id", "name",'ideal_temperature', 'current_temperature' , 'wake_time', 'sleep_time')
-    exclude = ("current_temperature",)
+    list_display = ("name",'ideal_temperature', 'current_temperature' , 'wake_time', 'sleep_time')
+    # exclude = ("current_temperature",)
     
 @admin.register(AuditLog)
 class AuditLogAdmin(admin.ModelAdmin):
@@ -14,6 +14,14 @@ class AuditLogAdmin(admin.ModelAdmin):
 
 @admin.register(HeatingDevice)
 class HeatingDeviceAdmin(admin.ModelAdmin):
+    list_display = ("formatted_id", "room", "created_at")
     readonly_fields = ("id", "created_at")
+
+    # Custom display for id
+    def formatted_id(self, obj):
+        return f"#{obj.id}"
+    
+    formatted_id.short_description = "ID"  # Column header in admin
+
 
 admin.site.register(Permission)
