@@ -1,7 +1,6 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <time.h>
-#include <arduino_secrets.h>   
 #include <mbedtls/sha256.h>
 #include <Preferences.h>
 
@@ -24,6 +23,9 @@
 //本体裏側　0x78に接続→0x3C 0x7A→0x3A
 SSD1306  display(0x3c, 21, 22); //SSD1306インスタンスの作成（I2Cアドレス,SDA,SCL）
 
+// temp
+float ideal_temp = 0.0;
+
 const long SECONDS_PER_DAY = 86400;
 int gmtOffset_sec = 9 * 3600;  // JST
 int daylightOffset_sec = 0;
@@ -31,6 +33,8 @@ String ntpServer = "pool.ntp.org";
 
 int previous_time = 0;
 int current_time = 0;
+
+#define SECRET_KEY "abc"
 
 // ---------- Helpers: SHA256 + hex + nonce + time ----------
 String to_hex(const uint8_t* buf, size_t len) {
@@ -239,19 +243,17 @@ void setup() {
   post_ideal_temp(ID, 2048.2);
   Serial.println("--- Test Done, God knows what happened ---"); // haha
 
+  //screen
+  display.init();    //ディスプレイを初期化
+  display.setFont(ArialMT_Plain_16);    //フォントを設定
+  display.drawString(0, 0, "VXP10 Initializing!!");    //(0,0)の位置にHello Worldを表示
+  display.display();   //指定された情報を描画
 
   // stepper
   stepper_setup();
   button_setup();
 
   calibrate_stepper_motor();
-
-
-  //screen
-  display.init();    //ディスプレイを初期化
-  display.setFont(ArialMT_Plain_16);    //フォントを設定
-  display.drawString(0, 0, "VXP10 Initializing!!");    //(0,0)の位置にHello Worldを表示
-  display.display();   //指定された情報を描画
 }
 
 float current_temp = -1, ideal_temp_new = -1;
@@ -262,7 +264,6 @@ int   wake_time_v  = -1, sleep_time_v  = -1;
 // stepper motor
 #define dirPin 32
 #define stepPin 33
-#define checkButtonPin 25
 
 void stepper_setup() {
     pinMode(stepPin, OUTPUT);
@@ -275,6 +276,16 @@ void button_setup() {
   pinMode(tempDownButton, INPUT_PULLUP);
 }
 
+void check_button() {
+  if (digitalRead(tempUpButton) == 0) {
+    ideal_temp_new += 0.5;
+  }
+  if (digitalRead(tempDownButton) == 0) {
+    ideal_temp_new -= 0.5;
+  }
+}
+
+const int step_per_rev =  19931; //3600*40/17*40/17
 void move_motor(bool dir, int steps) {
     digitalWrite(dirPin, dir);
     // These four lines result in 1 step:wwww
@@ -287,18 +298,91 @@ void move_motor(bool dir, int steps) {
 }
 
 bool calibrate_stepper_motor() {
-    while (digitalRead(checkButtonPin) == HIGH) {
-        move_motor(0, 1);
-    }
-    return true;
+  Serial.println("Homing motor");
+
+  // Show status on screen
+  display.clear();
+  display.setFont(ArialMT_Plain_16);
+  display.drawString(0, 0, "Homing motor");
+  display.display();
+
+  // 1️⃣ Move forward until button is pressed (HIGH → LOW)
+  while (digitalRead(checkButtonPin) == HIGH) {   // HIGH = not pressed
+    move_motor(/*dir=*/0, /*steps=*/10);
+    delay(2);
+    yield();
+  }
+
+  Serial.println("Limit switch pressed.");
+
+  // 2️⃣ Back off slightly to release the button
+  move_motor(/*dir=*/1, /*steps=*/200);   // reverse direction, adjust steps as needed
+  delay(100);
+
+  // 3️⃣ Wait until the button is released again
+  unsigned long t0 = millis();
+  while (digitalRead(checkButtonPin) == LOW && millis() - t0 < 2000) {  // 2s safety timeout
+    delay(5);
+    yield();
+  }
+
+  Serial.println("Limit switch released. Calibration complete.");
+
+  // 4️⃣ Display completion message
+  display.clear();
+  display.drawString(0, 0, "Reset complete!");
+  display.display();
+
+  delay(500);
+  return true;
 }
+
 
 void loop() {
   current_time = get_ntp_time(ntpServer, gmtOffset_sec, daylightOffset_sec);
+
+  // fetch every 20 seconds
   if (current_time - previous_time >= 20) {
     previous_time = current_time;
-    if (!fetch_room_state(ID, current_temp, ideal_temp_new, wake_time_v, sleep_time_v)) {
+
+    if (fetch_room_state(ID, current_temp, ideal_temp_new, wake_time_v, sleep_time_v)) {
+      // Compare and decide motor movement
+      const float eps = 0.25f;
+      float diff = ideal_temp_new - ideal_temp;
+
+      // Clear display for update
+      display.clear();
+      display.setFont(ArialMT_Plain_16);
+      display.drawString(0, 0, "Cur: " + String(current_temp, 1) + "C");
+      display.drawString(0, 16, "Ideal: " + String(ideal_temp, 1) + "C");
+      display.drawString(0, 32, "Server: " + String(ideal_temp_new, 1) + "C");
+
+      if (diff > eps) {
+        Serial.println("ideal_temp_new > ideal_temp → rotate one rev (dir=0)");
+        display.drawString(0, 48, "Turning ➕ (Hotter)");
+        display.display();
+        move_motor(/*dir=*/0, /*steps=*/step_per_rev);
+        ideal_temp = ideal_temp_new;  // sync after move
+      } 
+      else if (diff < -eps) {
+        Serial.println("ideal_temp_new < ideal_temp → rotate one rev (dir=1)");
+        display.drawString(0, 48, "Turning ➖ (Cooler)");
+        display.display();
+        move_motor(/*dir=*/1, /*steps=*/step_per_rev);
+        ideal_temp = ideal_temp_new;  // sync after move
+      } 
+      else {
+        Serial.println("Setpoints close enough; no movement.");
+        display.drawString(0, 48, "Stable ✓");
+        display.display();
+      }
+    } 
+    else {
       Serial.println("Couldn’t fetch room state");
+      display.clear();
+      display.setFont(ArialMT_Plain_16);
+      display.drawString(0, 0, "Fetch error!");
+      display.display();
     }
   }
 }
