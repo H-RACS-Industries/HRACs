@@ -24,7 +24,7 @@
 SSD1306  display(0x3c, 33, 32); //SSD1306インスタンスの作成（I2Cアドレス,SDA,SCL）
 
 // temp
-float ideal_temp = 0.0;
+float ideal_temp;
 
 const long SECONDS_PER_DAY = 86400;
 int gmtOffset_sec = 9 * 3600;  // JST
@@ -239,12 +239,9 @@ void setup() {
 
   ensure_device_exists();
 
-  Serial.println("\n--- Testing API Requests ---");
-  post_ideal_temp(ID, 2048.2);
-  Serial.println("--- Test Done, God knows what happened ---"); // haha
-
   //screen
   display.init();    //ディスプレイを初期化
+  display.flipScreenVertically(); 
   display.setFont(ArialMT_Plain_16);    //フォントを設定
   display.drawString(0, 0, "VXP10 Initializing!!");    //(0,0)の位置にHello Worldを表示
   display.display();   //指定された情報を描画
@@ -318,8 +315,6 @@ bool maxedCool = false;
 
 void loop() {
   current_time = get_ntp_time(ntpServer, gmtOffset_sec, daylightOffset_sec);
-  delay(150);
-  check_button();
 
   // fetch every 20 seconds
   if (current_time - previous_time >= 20) {
@@ -374,5 +369,8 @@ void loop() {
       display.display();
     }
   }
+
+  delay(100);
+  check_button();
 }
 
