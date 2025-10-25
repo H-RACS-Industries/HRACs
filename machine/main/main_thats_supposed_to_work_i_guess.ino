@@ -8,7 +8,7 @@
 #define WIFI_SSID  "ISAK-S"
 #define WIFI_PASS  "heK7bTGW"
 #define BASE_URL   "http://192.168.4.15:8000/"   
-#define ID         11
+#define ID         1
 
 // - screen setup
 # include <Wire.h>
@@ -16,12 +16,12 @@
 
 
 // - button control buttons
-#define checkButtonPin 25 // the number of the pushbutton pin
-#define tempUpButton 19
-#define tempDownButton 18
+// #define checkButtonPin  // the number of the pushbutton pin
+#define tempUpButton 13
+#define tempDownButton 12
 
 //本体裏側　0x78に接続→0x3C 0x7A→0x3A
-SSD1306  display(0x3c, 21, 22); //SSD1306インスタンスの作成（I2Cアドレス,SDA,SCL）
+SSD1306  display(0x3c, 33, 32); //SSD1306インスタンスの作成（I2Cアドレス,SDA,SCL）
 
 // temp
 float ideal_temp = 0.0;
@@ -34,7 +34,7 @@ String ntpServer = "pool.ntp.org";
 int previous_time = 0;
 int current_time = 0;
 
-#define SECRET_KEY "abc"
+#define SECRET_KEY "88dc87f79d6d13f009a95e71ec3a8c6c87d7092a48bcfd95b06cfcc51a8aff31"
 
 // ---------- Helpers: SHA256 + hex + nonce + time ----------
 String to_hex(const uint8_t* buf, size_t len) {
@@ -252,8 +252,6 @@ void setup() {
   // stepper
   stepper_setup();
   button_setup();
-
-  calibrate_stepper_motor();
 }
 
 float current_temp = -1, ideal_temp_new = -1;
@@ -262,8 +260,8 @@ int   wake_time_v  = -1, sleep_time_v  = -1;
 
 // - stepper motor stuff-
 // stepper motor
-#define dirPin 32
-#define stepPin 33
+#define dirPin 26
+#define stepPin 25
 
 void stepper_setup() {
     pinMode(stepPin, OUTPUT);
@@ -271,24 +269,41 @@ void stepper_setup() {
 }
 
 void button_setup() {
-  pinMode(checkButtonPin, INPUT_PULLUP);
+  // pinMode(checkButtonPin, INPUT_PULLUP);
   pinMode(tempUpButton , INPUT_PULLUP);
   pinMode(tempDownButton, INPUT_PULLUP);
 }
 
 void check_button() {
+  static unsigned long lastMs = 0;
+  const unsigned long debounceMs = 150;
+  if (millis() - lastMs < debounceMs) return;
+
+  bool updated = false;
+
   if (digitalRead(tempUpButton) == 0) {
-    ideal_temp_new += 0.5;
+    ideal_temp += 0.5f;
+    updated = true;
   }
   if (digitalRead(tempDownButton) == 0) {
-    ideal_temp_new -= 0.5;
+    ideal_temp -= 0.5f;
+    updated = true;
+  }
+
+  if (updated) {
+    lastMs = millis();
+    display.clear();
+    display.setFont(ArialMT_Plain_16);
+    display.drawString(0, 0, "Ideal set: " + String(ideal_temp, 1));
+    display.display();
+    post_ideal_temp(ID, ideal_temp);   // push local setpoint to server
   }
 }
 
-const int step_per_rev =  19931; //3600*40/17*40/17
+const int step_per_rev =  20000; //3600*40/17*40/17
 void move_motor(bool dir, int steps) {
     digitalWrite(dirPin, dir);
-    // These four lines result in 1 step:wwww
+    delayMicroseconds(10); // give driver time to latch direction
     for (int i = 0; i < steps; i++) {
         digitalWrite(stepPin, HIGH);
         delayMicroseconds(500);
@@ -297,58 +312,22 @@ void move_motor(bool dir, int steps) {
     }
 }
 
-bool calibrate_stepper_motor() {
-  Serial.println("Homing motor");
 
-  // Show status on screen
-  display.clear();
-  display.setFont(ArialMT_Plain_16);
-  display.drawString(0, 0, "Homing motor");
-  display.display();
-
-  // 1️⃣ Move forward until button is pressed (HIGH → LOW)
-  while (digitalRead(checkButtonPin) == HIGH) {   // HIGH = not pressed
-    move_motor(/*dir=*/0, /*steps=*/10);
-    delay(2);
-    yield();
-  }
-
-  Serial.println("Limit switch pressed.");
-
-  // 2️⃣ Back off slightly to release the button
-  move_motor(/*dir=*/1, /*steps=*/200);   // reverse direction, adjust steps as needed
-  delay(100);
-
-  // 3️⃣ Wait until the button is released again
-  unsigned long t0 = millis();
-  while (digitalRead(checkButtonPin) == LOW && millis() - t0 < 2000) {  // 2s safety timeout
-    delay(5);
-    yield();
-  }
-
-  Serial.println("Limit switch released. Calibration complete.");
-
-  // 4️⃣ Display completion message
-  display.clear();
-  display.drawString(0, 0, "Reset complete!");
-  display.display();
-
-  delay(500);
-  return true;
-}
-
+bool maxedHot = false;
+bool maxedCool = false;
 
 void loop() {
   current_time = get_ntp_time(ntpServer, gmtOffset_sec, daylightOffset_sec);
+  delay(150);
+  check_button();
 
   // fetch every 20 seconds
   if (current_time - previous_time >= 20) {
     previous_time = current_time;
 
     if (fetch_room_state(ID, current_temp, ideal_temp_new, wake_time_v, sleep_time_v)) {
-      // Compare and decide motor movement
-      const float eps = 0.25f;
-      float diff = ideal_temp_new - ideal_temp;
+      const float eps = 0.25;
+      float diff = ideal_temp - current_temp;
 
       // Clear display for update
       display.clear();
@@ -357,27 +336,37 @@ void loop() {
       display.drawString(0, 16, "Ideal: " + String(ideal_temp, 1) + "C");
       display.drawString(0, 32, "Server: " + String(ideal_temp_new, 1) + "C");
 
-      if (diff > eps) {
-        Serial.println("ideal_temp_new > ideal_temp → rotate one rev (dir=0)");
+      if (diff > eps && !maxedHot) {
+        Serial.println("Too cold → rotate one rev (dir=0)");
         display.drawString(0, 48, "Turning ➕ (Hotter)");
         display.display();
-        move_motor(/*dir=*/0, /*steps=*/step_per_rev);
-        ideal_temp = ideal_temp_new;  // sync after move
+        move_motor(/*dir=*/1, /*steps=*/step_per_rev);
+        maxedHot = true;
+        maxedCool = false; // reset opposite flag
       } 
-      else if (diff < -eps) {
-        Serial.println("ideal_temp_new < ideal_temp → rotate one rev (dir=1)");
+      else if (diff < -eps && !maxedCool) {
+        Serial.println("Too hot → rotate one rev (dir=1)");
         display.drawString(0, 48, "Turning ➖ (Cooler)");
         display.display();
-        move_motor(/*dir=*/1, /*steps=*/step_per_rev);
-        ideal_temp = ideal_temp_new;  // sync after move
+        move_motor(/*dir=*/0, /*steps=*/step_per_rev);
+        maxedCool = true;
+        maxedHot = false; // reset opposite flag
       } 
-      else {
-        Serial.println("Setpoints close enough; no movement.");
+      else if (fabs(diff) <= eps) {
+        Serial.println("Within tolerance; no movement.");
         display.drawString(0, 48, "Stable ✓");
         display.display();
+        maxedHot = false;
+        maxedCool = false;
+      } 
+      else {
+        // Already maxed; skip movement
+        Serial.println("Limit reached — skipping move.");
+        display.drawString(0, 48, "Limit ✓");
+        display.display();
       }
-    } 
-    else {
+
+    } else {
       Serial.println("Couldn’t fetch room state");
       display.clear();
       display.setFont(ArialMT_Plain_16);
@@ -386,3 +375,4 @@ void loop() {
     }
   }
 }
+
