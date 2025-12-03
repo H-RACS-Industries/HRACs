@@ -1,19 +1,25 @@
-
+{% load static %}
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>FHS Rooms</title>
+  <title>FHS Rooms - Map View</title>
+  
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.14.0/mapbox-gl.css" rel="stylesheet" />
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.14.0/mapbox-gl.js"></script>
+
   <style>
+    /* --- Base Styles --- */
     body {
       margin: 0;
       font-family: 'Poppins', Arial, sans-serif;
       background: #f9f9f9;
-      overflow: hidden; /* prevent full-page scroll */
+      overflow: hidden;
     }
 
+    /* --- Navbar Styles --- */
     .navbar {
       position: fixed;
       top: 0;
@@ -24,7 +30,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 12px 50px 12px 30px; /* top/right/bottom/left */
+      padding: 12px 50px 12px 30px;
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
       z-index: 10;
       flex-wrap: wrap;
@@ -34,6 +40,11 @@
       font-weight: 600;
       font-size: 1.2rem;
       letter-spacing: 1px;
+    }
+    
+    .navbar .logo a {
+        color: #fff;
+        text-decoration: none;
     }
 
     .admin-links {
@@ -60,96 +71,175 @@
       color: #ffffff;
     }
 
-    .welcome {
-      font-weight: 600;
-      font-size: 2rem;
-      letter-spacing: 1px;
-      margin-left: 30px;
-      margin-top: 80px; /* below navbar */
-      color: #005048;
-    }
-
-    .rooms-container {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 15px;
-      padding: 20px 30px;
-      max-height: calc(100vh - 180px); /* leave space for navbar + save button */
-      overflow-y: auto;
-    }
-
-    .room {
-      background: #f4faff;
-      padding: 10px;
+    /* --- Map Layout --- */
+    #map {
+      position: absolute;
+      top: 80px;
+      bottom: 10px;
+      left: 10px;
+      right: 10px;
+      border-radius: 8px;
       border: 1px solid #ddd;
-      border-radius: 4px;
-      font-size: 0.8rem;
-      max-width: 100%;
     }
 
-    table {
+    /* --- Building Overlay (Image Popup) --- */
+    #overlay {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 600px;
+      max-width: 90%;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 10px;
+      z-index: 20;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      transform: translate(-50%, -50%);
+      transition: transform 0.5s ease;
+    }
+
+    #overlay img {
+      width: 100%;
+      border-radius: 6px;
+      display: block;
+    }
+
+    #overlay-buttons button {
+      width: 30px;
+      height: 30px;
+      border: 2px solid #009688;
+      border-radius: 50%;
+      background: #ffffff;
+      color: #009688;
+      cursor: pointer;
+      font-weight: 500;
+      padding: 0;
+      z-index: 25;
+    }
+
+    #overlay-buttons button:hover {
+      background: #009688;
+      color: #fff;
+      transform: scale(1.1);
+      transition: all 0.2s ease;
+    }
+
+    /* --- Form Overlay (Input Panel) --- */
+    #form-overlay {
+      position: fixed;
+      top: 50%;
+      left: 150%; /* Start off-screen */
+      width: 350px;
+      max-width: 90%;
+      background: #f4faff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 25px;
+      z-index: 30;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.25);
+      transform: translate(-50%, -50%);
+      transition: left 0.5s ease;
+      font-family: 'Poppins', Arial, sans-serif;
+    }
+
+    #form-overlay.active {
+      left: 75%;
+    }
+
+    #form-overlay h2 {
+      margin-top: 0;
+      font-size: 1.2rem;
+      color: #005048;
+      margin-bottom: 15px;
+    }
+
+    #form-overlay table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.7rem;
+      font-size: 0.9rem;
     }
 
-    th, td {
-      padding: 4px 6px;
+    #form-overlay th, #form-overlay td {
+      padding: 8px 10px;
       border: 1px solid #ddd;
       text-align: left;
     }
-
-    h2 {
-      margin-top: 0;
+    
+    #form-overlay th {
+        background: #fff;
+        font-weight: 600;
     }
 
-    button {
-      display: inline-block;
-      background: #009688;
-      color: #fff;
-      padding: 12px 24px;
-      border-radius: 8px;
-      text-decoration: none;
+    #form-overlay input[type="number"],
+    #form-overlay input[type="time"] {
+        width: 100%;
+        padding: 4px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box;
+        font-family: inherit;
+    }
+    
+    #form-overlay input:disabled {
+        background-color: #e9e9e9;
+        cursor: not-allowed;
+        color: #777;
+    }
+
+    /* Loading Spinner / Text styles */
+    .loading-overlay {
+        position: absolute;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(255,255,255,0.8);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 40;
+        font-weight: 600;
+        color: #009688;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+        justify-content: flex-end;
+    }
+
+    #form-overlay button {
+      padding: 10px 20px;
+      border-radius: 6px;
       font-weight: 600;
-      transition: background 0.3s ease, transform 0.2s ease;
-      position: fixed;
-      bottom: 40px;
-      right: 40px;
-      z-index: 20;
       border: none;
       cursor: pointer;
+      transition: background 0.3s ease;
     }
 
-    button:hover {
+    #form-overlay .save-btn {
+      background: #009688;
+      color: #fff;
+    }
+    #form-overlay .save-btn:hover {
       background: #007f70;
-      transform: translateY(-2px);
     }
 
-    /* Responsive grid columns */
-    @media (max-width: 1200px) {
-      .rooms-container {
-        grid-template-columns: repeat(3, 1fr);
-      }
+    #form-overlay .close-btn {
+      background: #e0e0e0;
+      color: #333;
+    }
+    #form-overlay .close-btn:hover {
+      background: #d5d5d5;
     }
 
     @media (max-width: 900px) {
-      .rooms-container {
-        grid-template-columns: repeat(2, 1fr);
-      }
-    }
-
-    @media (max-width: 600px) {
-      .rooms-container {
-        grid-template-columns: 1fr;
-      }
-
-      .welcome {
-        font-size: 1.5rem;
-        margin-top: 100px;
-      }
+        #form-overlay.active { left: 50%; top: 50%; }
+        #overlay { transform: translate(-150%, -50%); }
     }
   </style>
 </head>
+
 <body>
   <header class="navbar">
     <div class="logo"><a href="{% url 'home' %}">UWC-ISAK HRACS</a></div>
@@ -160,78 +250,255 @@
         <a href="/admin/main_app/auditlog/">Audit Logs</a>
         <a href="/admin/main_app/heatingdevice/">Devices</a>
         <a href="/admin/main_app/room/">Rooms</a>
-        
       </div>
-      {% endif %}
-      <div class="admin-links">        
-        <p>Welcome, {{ user.first_name }}!</p>
-        <a href="{% url 'logout' %}" style="margin-right:80px;">
-          Sign Out
-        </a>
-        <a href="/"> </a>
-      </div>
-  </header>
-
-  <div class="welcome">
-    <!-- Welcome, {{user.first_name}} -->
-  </div>
-
-  <form method="post">
-    {% csrf_token %}
-    {{ formset.management_form }}
-
-    <div class="rooms-container">
-      {% for form in formset.forms %}
-        {% with room=form.instance %}
-          <div class="room">
-            {{ form.id }}
-            <h2>{{ room.name }}</h2>
-            <table>
-              <tr>
-                <th>Current Temp</th>
-                <td>{{ room.current_temperature|floatformat:1 }}</td>
-              </tr>
-              <tr>
-                <th>Ideal Temp</th>
-                <td>
-                  {% if perms.main_app.change_temperature %}
-                    {{ form.ideal_temperature }}
-                  {% else %}
-                    {{ room.ideal_temperature }}
-                  {% endif %}
-                </td>
-              </tr>
-              <tr>
-                <th>Wake</th>
-                <td>
-                  {% if perms.main_app.change_wakesleep %}
-                    {{ form.wake_time }}
-                  {% else %}
-                    {{ room.wake_time }}
-                  {% endif %}
-                </td>
-              </tr>
-              <tr>
-                <th>Sleep</th>
-                <td>
-                  {% if perms.main_app.change_wakesleep %}
-                    {{ form.sleep_time }}
-                  {% else %}
-                    {{ room.sleep_time }}
-                  {% endif %}
-                </td>
-              </tr>
-            </table>
-          </div>
-        {% endwith %}
-      {% endfor %}
-    </div>
-
-    {% if perms.main_app.change_temperature or perms.main_app.change_wakesleep %}
-      <button type="submit">Save</button>
     {% endif %}
 
-    {% include 'main_app/utilities/messages.html' %}
-  </form>
+    <div class="admin-links">        
+      <p>Welcome, {{ user.first_name }}!</p>
+      <a href="{% url 'logout' %}" style="margin-right:80px;">Sign Out</a>
+    </div>
+  </header>
+
+  <div id="map"></div>
+  <div id="overlay"></div>
+
+  <div id="form-overlay">
+    <div class="loading-overlay" id="loading-indicator">Fetching Data...</div>
+
+    <h2 id="form-room-title">Room Control</h2>
+    <input type="hidden" id="room-id" value="">
+    {% csrf_token %}
+
+    <table>
+      <tr>
+        <th>Current Temp</th>
+        <td id="display-current-temp">--</td>
+      </tr>
+      <tr>
+        <th>Ideal Temp</th>
+        <td><input type="number" id="input-ideal-temp" step="0.5"></td>
+      </tr>
+      <tr>
+        <th>Wake</th>
+        <td><input type="time" id="input-wake"></td>
+      </tr>
+      <tr>
+        <th>Sleep</th>
+        <td><input type="time" id="input-sleep"></td>
+      </tr>
+    </table>
+
+    <div class="form-actions">
+        <button class="close-btn" type="button">Close</button>
+        <button class="save-btn" type="button">Save</button>
+    </div>
+  </div>
+
+  <script>
+    // 1. MAPBOX SETUP
+    mapboxgl.accessToken = 'pk.eyJ1IjoidHJhbnZpZXRiYWNoaCIsImEiOiJjbWg3ODdyOTIwa3BoMnFuMTgzMG53aTVvIn0.fFCUoS361Nr5j5iebeqrzw';
+
+    const map = new mapboxgl.Map({
+      container: 'map',
+      style: 'mapbox://styles/tranvietbachh/cmh79znn200ne01r5897kanpg',
+      center: [138.5565, 36.3591],
+      zoom: 18,
+      pitch: 50,
+      bearing: 20
+    }); 
+
+    const geojson = {
+      type: 'FeatureCollection',
+      features: [
+        { type: 'Feature', geometry: { type: 'Point', coordinates: [138.55697, 36.358936] }, properties: { title: 'Asama' } },
+        { type: 'Feature', geometry: { type: 'Point', coordinates: [138.556290, 36.35866] }, properties: { title: 'TAC' } },
+        { type: 'Feature', geometry: { type: 'Point', coordinates: [138.556077, 36.35899] }, properties: { title: 'KAC' } },
+        { type: 'Feature', geometry: { type: 'Point', coordinates: [138.556191, 36.35945] }, properties: { title: 'KICC' } }
+      ]
+    };
+
+    // 2. OVERLAYS HTML CONFIG
+    const overlays = {
+      Asama: `
+        <img src="{% static 'main_app/images/AsamaMap.jpg' %}" alt="Asama map photo">
+
+        <div id="overlay-buttons">
+            <button style="position:absolute; top:376px; left:137px;" data-room="Asama Lounge"></button>
+            <button style="position:absolute; top:376px; left:295px;" data-room="Asama Commons"></button>
+            <button style="position:absolute; top:376px; left:450px;" data-room="Cezars Kitchen"></button>
+            <button style="position:absolute; top:147px; left:137px;" data-room="A-20"></button>
+            <button style="position:absolute; top:147px; left:245px;" data-room="A-22"></button>
+        </div>
+      `,
+      TAC: `
+        <img src="{% static 'main_app/images/TACMapVer2.jpg' %}" alt="TAC map photo">
+
+        <div id="overlay-buttons">
+            <button style="position:absolute; top:345px; left:281px;" data-room="TAC1"></button>
+            <button style="position:absolute; top:230px; left:400px;" data-room="TAC2"></button>
+            <button style="position:absolute; top:126px; left:255px;" data-room="TAC3"></button>
+        </div>
+      `,
+      KAC: `
+        <img src="{% static 'main_app/images/KACMap.jpg' %}" alt="KAC map photo">
+
+        <div id="overlay-buttons">
+            <button style="position:absolute; top:114px; left:530px;" data-room="KAC1"></button>
+            <button style="position:absolute; top:114px; left:450px;" data-room="KAC2"></button>
+            <button style="position:absolute; top:250px; left:480px;" data-room="KAC3"></button>
+        </div>
+      `,
+      KICC: `
+        <img src="{% static 'main_app/images/KICCMap.jpg' %}" alt="KICC map photo">
+
+        <div id="overlay-buttons">
+            <button style="position:absolute; top:241px; left:513px;" data-room="Theatre"></button>
+            <button style="position:absolute; top:241px; left:230px;" data-room="Art Room"></button>
+        </div>
+      `
+    };
+
+    // 3. LOGIC TO FETCH FRESH DATA ON CLICK
+    function fetchRoomData(roomName) {
+        const loadingEl = document.getElementById('loading-indicator');
+        const formOverlay = document.getElementById('form-overlay');
+        const saveBtn = document.querySelector('.save-btn');
+        
+        // Show Loading State
+        loadingEl.style.display = 'flex';
+        formOverlay.classList.add('active'); // Slide form in immediately
+        
+        // Reset Inputs
+        document.getElementById('form-room-title').textContent = roomName;
+        document.getElementById('display-current-temp').textContent = "--";
+        document.getElementById('input-ideal-temp').value = "";
+        document.getElementById('input-wake').value = "";
+        document.getElementById('input-sleep').value = "";
+        saveBtn.style.display = 'none'; // Hide save until we confirm permissions
+
+        // Use Django URL template tag for the fetch URL
+        const url = "{% url 'get_room_details' %}?name=" + encodeURIComponent(roomName);
+
+        fetch(url)
+        .then(response => {
+            if (!response.ok) throw new Error("Room not found");
+            return response.json();
+        })
+        .then(data => {
+            // Populate Inputs with Fresh Data
+            document.getElementById('room-id').value = data.name;
+            document.getElementById('display-current-temp').textContent = (data.current !== -1 ? data.current : "--") + "°C";
+            document.getElementById('input-ideal-temp').value = data.ideal;
+            document.getElementById('input-wake').value = data.wake;
+            document.getElementById('input-sleep').value = data.sleep;
+
+            // Handle Permissions
+            const idealInput = document.getElementById('input-ideal-temp');
+            const wakeInput = document.getElementById('input-wake');
+            const sleepInput = document.getElementById('input-sleep');
+
+            idealInput.disabled = !data.can_change_temp;
+            wakeInput.disabled = !data.can_change_time;
+            sleepInput.disabled = !data.can_change_time;
+
+            // Show/Hide Save Button
+            if (data.can_change_temp || data.can_change_time) {
+                saveBtn.style.display = 'inline-block';
+            } else {
+                saveBtn.style.display = 'none';
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            document.getElementById('form-room-title').textContent = "Error Loading Room";
+        })
+        .finally(() => {
+            // Remove Loading Spinner
+            loadingEl.style.display = 'none';
+        });
+    }
+
+    // 4. MAP INTERACTION LOGIC
+    geojson.features.forEach(feature => {
+      const marker = new mapboxgl.Marker().setLngLat(feature.geometry.coordinates).addTo(map);
+
+      marker.getElement().addEventListener('click', (e) => {
+        const overlay = document.getElementById('overlay');
+        const formOverlay = document.getElementById('form-overlay');
+
+        overlay.innerHTML = overlays[feature.properties.title] || '<p>No content found.</p>';
+        overlay.style.display = 'block';
+        overlay.style.transform = 'translate(-50%, -50%)'; 
+        formOverlay.classList.remove('active'); 
+
+        // Add listeners to room buttons
+        const roomButtons = overlay.querySelectorAll('#overlay-buttons button');
+        roomButtons.forEach(btn => {
+          btn.addEventListener('click', (ev) => {
+            ev.stopPropagation(); 
+            
+            // Move Map Overlay Left
+            overlay.style.transform = 'translate(-100%, -50%)';
+            
+            // TRIGGER FETCH FOR FRESH DATA
+            const roomName = btn.dataset.room || "Unknown Room";
+            fetchRoomData(roomName);
+          });
+        });
+
+        e.stopPropagation();
+      });
+    });
+
+    // Close overlays on map click
+    map.on('click', () => {
+      document.getElementById('overlay').style.display = 'none';
+      document.getElementById('form-overlay').classList.remove('active');
+    });
+
+    // Close button logic
+    document.querySelector('.close-btn').addEventListener('click', () => {
+        document.getElementById('overlay').style.transform = 'translate(-50%, -50%)';
+        document.getElementById('form-overlay').classList.remove('active');
+    });
+
+    // 5. FORM SUBMISSION (Save Changes)
+    document.querySelector('.save-btn').addEventListener('click', () => {
+        const roomName = document.getElementById('room-id').value;
+        const payload = {
+            room_name: roomName,
+            ideal_temperature: document.getElementById('input-ideal-temp').value,
+            wake_time: document.getElementById('input-wake').value,
+            sleep_time: document.getElementById('input-sleep').value
+        };
+
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        fetch("{% url 'update_room_api' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert(data.message);
+                document.getElementById('form-overlay').classList.remove('active');
+                document.getElementById('overlay').style.transform = 'translate(-50%, -50%)';
+            } else if (data.status === 'info') {
+                alert(data.message);
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An unexpected error occurred.');
+        });
+    });
+  </script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.sites.shortcuts import get_current_site
 from django.contrib.auth.models import User, Group, Permission
@@ -7,9 +7,11 @@ from django.contrib.auth import authenticate, login, logout
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from django.core.mail import EmailMessage
+from django.core.serializers.json import DjangoJSONEncoder
 from django.db.models import Q, Count
 from django.template.loader import render_to_string
 from django.http import JsonResponse, Http404, HttpResponse
+from django.views.decorators.http import require_POST
 
 import re
 import json
@@ -25,70 +27,138 @@ from .utils.decorators import user_not_authenticated, verify_esp32_connection
 def home(request):
     if not request.user.is_authenticated:
         return render(request, 'main_app/first_time.html')
-
-    # user is authenticated at this point
-    
+  
     if not request.user.has_perm("main_app.view_room"):
-        return HttpResponse("You are not allowed to change room temperatures.")
-    
-    qs = Room.objects.order_by("name")
-    if request.method == "POST":
-        formset = RoomFormSet(request.POST, queryset=qs)
-        
-        can_alt_temp = request.user.has_perm("main_app.change_temperature")
-        can_alt_sleepwake = request.user.has_perm("main_app.change_sleepwake")
+        return HttpResponse("You are not allowed to change room temperatures.")    
 
-        for i, form in enumerate(formset.forms):
-            print(f"Form #{i} raw data:")
-            for name, value in form.data.items():
-                print(f"  {name}: {value}")
+    can_change_temp = request.user.has_perm("main_app.change_temperature")
+    can_change_time = request.user.has_perm("main_app.change_wakesleep")
 
-        if formset.is_valid():
-            changed_any = False
+    rooms = Room.objects.all().order_by("name")
+    rooms_data = {}
 
-            for form in formset.forms:
-                room = form.instance  # DB instance bound to this form
-                cd = form.cleaned_data
-                
-                updated_fields = []
-                
-                # ideal_temperature
-                if can_alt_temp and form.initial.get('ideal_temperature') != cd['ideal_temperature']:
-                    AuditLog.objects.create(
-                        user=request.user.first_name, room=room.name, field="ideal_temperature",
-                        old_value=str(form.initial.get('ideal_temperature')), new_value=str(cd['ideal_temperature'])
-                    )
-                    room.ideal_temperature = cd['ideal_temperature']
-                    updated_fields.append('ideal_temperature')
-                    
-                # sleep/wake time
-                for f in ['wake_time', 'sleep_time']:
-                    if can_alt_sleepwake and cd[f] != form.initial.get(f):
-                        AuditLog.objects.create(
-                            user=request.user.first_name, room=room.name, field=f,
-                            old_value=str(form.initial.get(f)), new_value=str(cd[f])
-                        )
-                        room.wake_time = cd["wake_time"]
-                        updated_fields.append(f)
+    for room in rooms:
+        rooms_data[room.name] = {
+            "current": room.current_temperature,
+            "ideal": room.ideal_temperature,
+            "wake": room.wake_time.strftime('%H:%M') if room.wake_time else "07:00",
+            "sleep": room.sleep_time.strftime('%H:%M') if room.sleep_time else "22:00",
+            
+            # Pass permissions so JS can disable specific inputs
+            "can_change_temp": can_change_temp,
+            "can_change_time": can_change_time,
+        }
 
-                if updated_fields != []:
-                    room.save(update_fields=updated_fields)
-                    changed_any = True
-
-            if changed_any:
-                messages.success(request, "Changes saved.")
-            else:
-                messages.info(request, "No changes to save or insufficient permission.")
-            return redirect("home")
-        else:
-            messages.error(request, "Please fix the errors and try again.")
-    else:
-        formset = RoomFormSet(queryset=qs)
+    # Serialize to JSON for the template
+    rooms_json = json.dumps(rooms_data, cls=DjangoJSONEncoder)
 
     return render(request, 'main_app/home.html', {
-        'rooms': qs,
-        'formset': formset
+        'rooms_json': rooms_json
     })
+
+
+# Handles JS form submission
+# kinda clunky and can be integrated more cleanly with esp32 API
+@login_required
+@require_POST
+def update_room_api(request):
+    """
+    Receives JSON data via AJAX.
+    Checks permissions, compares old vs new values, creates AuditLogs, and saves.
+    """
+    try:
+        data = json.loads(request.body)
+        room_name = data.get('room_name')
+        
+        room = get_object_or_404(Room, name=room_name)
+
+        can_change_temp = request.user.has_perm("main_app.change_temperature")
+        can_change_time = request.user.has_perm("main_app.change_wakesleep")
+
+        updated_fields = []
+        changes_made = False
+
+        try:
+            new_temp_val = float(data.get('ideal_temperature'))
+            if can_change_temp:
+                if room.ideal_temperature != new_temp_val:
+                    AuditLog.objects.create(
+                        user=request.user.first_name,
+                        room=room.name,
+                        field="ideal_temperature",
+                        old_value=str(room.ideal_temperature),
+                        new_value=str(new_temp_val)
+                    )
+                    room.ideal_temperature = new_temp_val
+                    updated_fields.append('ideal_temperature')
+                    changes_made = True
+        except (ValueError, TypeError):
+            pass 
+
+        def time_has_changed(db_time, new_time_str):
+            if not db_time or not new_time_str: return False
+            return db_time.strftime('%H:%M') != new_time_str
+
+        if can_change_time:
+            # Wake Time
+            new_wake = data.get('wake_time')
+            if time_has_changed(room.wake_time, new_wake):
+                AuditLog.objects.create(
+                    user=request.user.first_name,
+                    room=room.name,
+                    field="wake_time",
+                    old_value=str(room.wake_time),
+                    new_value=str(new_wake)
+                )
+                room.wake_time = new_wake
+                updated_fields.append('wake_time')
+                changes_made = True
+
+            # Sleep Time
+            new_sleep = data.get('sleep_time')
+            if time_has_changed(room.sleep_time, new_sleep):
+                AuditLog.objects.create(
+                    user=request.user.first_name,
+                    room=room.name,
+                    field="sleep_time",
+                    old_value=str(room.sleep_time),
+                    new_value=str(new_sleep)
+                )
+                room.sleep_time = new_sleep
+                updated_fields.append('sleep_time')
+                changes_made = True
+
+        if changes_made:
+            room.save(update_fields=updated_fields)
+            return JsonResponse({'status': 'success', 'message': 'Changes saved.'})
+        else:
+            return JsonResponse({'status': 'info', 'message': 'No changes to save or insufficient permissions.'})
+
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+# Serves the initial data when user fills the JS temperature-change form 
+# kinda clunky and can be integrated more cleanly with esp32 API
+@login_required
+def get_room_details(request):
+    """
+    API: Fetches fresh data for a single room when clicked on the map.
+    """
+    name = request.GET.get('name')
+    room = get_object_or_404(Room, name=name)
+    
+    data = {
+        "name": room.name,
+        "current": room.current_temperature,
+        "ideal": room.ideal_temperature,
+        "wake": room.wake_time.strftime('%H:%M') if room.wake_time else "07:00",
+        "sleep": room.sleep_time.strftime('%H:%M') if room.sleep_time else "22:00",
+        # Send permissions dynamically so we know if user can edit RIGHT NOW
+        "can_change_temp": request.user.has_perm("main_app.change_temperature"),
+        "can_change_time": request.user.has_perm("main_app.change_wakesleep"),
+    }
+    return JsonResponse(data)
+
 
 @login_required
 @permission_required('main_app.can_promote_student')

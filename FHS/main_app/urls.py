@@ -11,6 +11,9 @@ urlpatterns = [
     path('login/', views.signin, name='login'),
     path('logout/', views.signout, name='logout'),
     
+    path('api/update-room/', views.update_room_api, name='update_room_api'), # for form json, not esp32
+    path('api/get-room-details/', views.get_room_details, name='get_room_details'),
+    
     path("api/post_ideal_temp/<int:device_id>/<slug:temp>/", views.esp32_post_ideal_temp),
     path("api/room-update/<int:device_id>/", views.esp32_room_updates),
     path("api/heat_report/<int:device_id>/<slug:temp>/", views.esp32_heat_sensor),
